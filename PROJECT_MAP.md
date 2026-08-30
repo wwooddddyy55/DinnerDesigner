@@ -1,9 +1,12 @@
 # Project Map
 
-DinnerDesigner is a client-only Vite + React 19 + TypeScript app for building a weekly meal plan
-from a personal meal library, tracking progress toward per-person weekly serving targets, and
-generating a shopping list. State lives in a single Zustand store persisted to `localStorage`; there
-is no backend and no router (screen switching is local `useState` in `App.tsx`).
+DinnerDesigner is a Vite + React 19 + TypeScript app for building a weekly meal plan from a personal
+meal library, tracking progress toward per-person weekly serving targets, and generating a shopping
+list. State lives in a single Zustand store persisted to `localStorage`, which remains the sole source
+of truth when the app runs with no backend (e.g. local dev); there is no router (screen switching is
+local `useState` in `App.tsx`). When hosted as the Home Assistant add-on, a small Node backend
+(`dinnerdesigner/server/index.js`) inside the same container syncs that state across every device
+pointed at the add-on — see `src/lib/sync.ts` and the "Data model notes" section below.
 
 ## File map
 
@@ -21,6 +24,7 @@ is no backend and no router (screen switching is local `useState` in `App.tsx`).
 | `src/lib/id.ts` | `generateId()` (UUID) used for all new entities. |
 | `src/lib/dragDrop.ts` | `cellDroppableId`/`parseCellDroppableId` encode/decode an `AssignmentGrid` cell's `(personId, mealType, day)` into the string id `@dnd-kit/core` droppables use. |
 | `src/lib/exportImport.ts` | JSON export/import of the full `meals` + `plans` state (`buildExport`, `downloadExport`, `parseImport`); `parseImport` migrates any old-shape `Person`/`PlannedMealEntry` records via `migratePerson`/`migratePlannedMealEntry`. |
+| `src/lib/sync.ts` | Cross-device sync orchestration against the add-on's `/api/state` backend (`dinnerdesigner/server/index.js`). `initialSync()` (called once from `App.tsx` before `seedMealsIfNeeded()`) detects whether a backend is reachable, adopts the server's state via `useAppStore.setState` (reusing `migratePerson`/`migratePlannedMealEntry`) if it already has data, or pushes this device's local state up as the seed if the server is empty; falls back to pure-`localStorage` behavior (today's default) if no backend responds. `startSyncLoop()` then debounces pushing local changes up and re-pulls on tab focus (`visibilitychange`). |
 | `src/lib/mealImport.ts` (+ `.test.ts`) | Single-meal recipe import: `parseMealDraft` validates/parses a one-meal JSON draft (as produced by pasting a recipe into an LLM chat) into a `MealDraft`; `MEAL_IMPORT_PROMPT_TEMPLATE` is the copyable chat prompt describing that JSON shape (name, mealTypes, protein, servingsPerBatch, ingredients, sourceUrl, notes). |
 | `src/screens/WeeklyPlanSetupScreen.tsx` (+ `.module.css`) | Pick/start a weekly plan, delete the selected week (via `ConfirmDialog`), choose meal types for the week, manage people, mark each person's day-by-day availability via `DayPlannerGrid` (their weekly serving target is derived from this), export/import data. |
 | `src/screens/MealLibraryScreen.tsx` (+ `.module.css`) | Browse/filter/add/edit/delete meals in the library; **Import recipe** opens `ImportMealDialog` to bring in a single meal parsed from pasted JSON, prefilling `MealForm` for review before saving. |
@@ -41,9 +45,13 @@ is no backend and no router (screen switching is local `useState` in `App.tsx`).
 | `src/components/ConfirmDialog.tsx` (+ `.module.css`) | Generic confirm/cancel modal, used for meal deletion. |
 | `src/styles/global.css` | Global CSS custom properties (colors, spacing, radius) and base element styles shared across the app. |
 | `repository.yaml` | Marks this repo as a Home Assistant Supervisor add-on repository (name/url/maintainer), so it can be added via HA's Add-on Store > Repositories. |
-| `dinnerdesigner/config.yaml` | HA add-on manifest: slug, version (bump to trigger a Supervisor update), ingress + direct-port (8099) access, no server-side options. |
-| `dinnerdesigner/Dockerfile` | Multi-stage add-on build: clones this repo's `main` branch and runs `npm run build`, then serves `dist/` via nginx. See `DEPLOY.md`. |
-| `dinnerdesigner/nginx.conf` | nginx config serving the built SPA on port 8099 for both Ingress and direct-port access (no ingress-proxy IP restriction, deliberately). |
+| `dinnerdesigner/config.yaml` | HA add-on manifest: slug, version (bump to trigger a Supervisor update), ingress + direct-port (8099) access. No `options`/`schema`, no `map:` — the add-on's own persistent `/data` directory (where `server/index.js` stores synced state) is available to every HA add-on automatically without one. |
+| `dinnerdesigner/Dockerfile` | Multi-stage add-on build: stage 1 clones this repo's `main` branch and runs `npm run build`; stage 2 serves `dist/` via nginx and also runs the small Node sync backend (`server/index.js`, via `start.sh`). See `DEPLOY.md`. |
+| `dinnerdesigner/nginx.conf` | nginx config serving the built SPA on port 8099 for both Ingress and direct-port access (no ingress-proxy IP restriction, deliberately), plus a `location /api/` proxy to the local sync backend on `127.0.0.1:8100`. |
+| `dinnerdesigner/server/index.js` | Dependency-free Node HTTP backend for cross-device sync: `GET`/`PUT /api/state` reading/writing a single JSON blob (`meals`, `plans`, `activePlanId`, `hasSeededMeals`, server-stamped `updatedAt`) atomically to `/data/state.json`. Listens on `127.0.0.1:8100` only, reachable exclusively via nginx's proxy. |
+| `dinnerdesigner/server/package.json` | Pins `"type": "commonjs"` for `index.js` — without it, Node resolves module type by walking up to the nearest `package.json`, which (outside the container, e.g. local testing from within this repo checkout) would incorrectly hit the repo root's `"type": "module"`. |
+| `dinnerdesigner/start.sh` | Container entrypoint: backgrounds `server/index.js`, then `exec`s nginx in the foreground as PID 1. |
+| `.gitattributes` | Pins `dinnerdesigner/start.sh` to LF line endings regardless of a contributor's local Git config — CRLF would break its `#!/bin/sh` shebang inside the Linux container. |
 | `DEPLOY.md` | Runbook for hosting the app as a Home Assistant add-on and for shipping updates to it (version bump + push + Update in HA). |
 
 ## Data model notes

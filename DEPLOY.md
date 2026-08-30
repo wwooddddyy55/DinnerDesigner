@@ -2,9 +2,13 @@
 
 DinnerDesigner can be hosted as a Home Assistant Supervisor add-on. The add-on builds the app straight
 from this repo's `main` branch and serves the static output with nginx, both as a direct port on your
-Home Assistant VM's IP and as an Ingress panel in the HA sidebar. There is no server-side data: all
-meals/plans still live in each browser's `localStorage`, exactly as they do today — hosting the app
-does not add cross-device sync.
+Home Assistant VM's IP and as an Ingress panel in the HA sidebar. The same container also runs a small
+Node backend (`dinnerdesigner/server/index.js`, proxied through nginx at `/api/state`) that persists a
+shared copy of your meals/plans to the add-on's own `/data` directory, so every browser/device pointed
+at the add-on syncs to that same shared copy instead of each keeping an independent local one. Each
+browser still keeps its own `localStorage` copy too, used as an offline fallback if the add-on is
+briefly unreachable. Running the app any other way (e.g. `npm run dev`) has no backend and behaves
+exactly as before — purely local to that one browser.
 
 ## One-time setup in Home Assistant
 

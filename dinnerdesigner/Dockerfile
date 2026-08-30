@@ -13,8 +13,14 @@ RUN echo "Building DinnerDesigner ${BUILD_VERSION}" \
     && npm ci \
     && npm run build
 
-# --- Stage 2: serve the static build with nginx ---
+# --- Stage 2: serve the static build with nginx, plus a small Node backend
+# for cross-device sync (see server/index.js) proxied through nginx at /api/. ---
 FROM nginx:1.27-alpine
+RUN apk add --no-cache nodejs
 COPY --from=build /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY server/ /app/server/
+COPY start.sh /start.sh
+RUN chmod +x /start.sh
 EXPOSE 8099
+CMD ["/start.sh"]

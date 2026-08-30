@@ -6,17 +6,33 @@ import { MealLibraryScreen } from './screens/MealLibraryScreen'
 import { PlanBuilderScreen } from './screens/PlanBuilderScreen'
 import { ShoppingListScreen } from './screens/ShoppingListScreen'
 import { WeeklyPlanSetupScreen } from './screens/WeeklyPlanSetupScreen'
+import { initialSync, startSyncLoop } from './lib/sync'
 import { useAppStore } from './store/useAppStore'
 
 function App() {
   const [view, setView] = useState<View>('setup')
+  const [syncReady, setSyncReady] = useState(false)
   const seedMealsIfNeeded = useAppStore((s) => s.seedMealsIfNeeded)
   const activePlanId = useAppStore((s) => s.activePlanId)
   const activePlan = useAppStore((s) => s.plans.find((p) => p.id === s.activePlanId))
 
+  // Sync must resolve before seeding, so a fresh browser never seeds the
+  // built-in starter meals only to have them immediately discarded by an
+  // incoming server pull (see src/lib/sync.ts).
   useEffect(() => {
-    seedMealsIfNeeded()
+    let cancelled = false
+    initialSync().then((result) => {
+      if (cancelled) return
+      if (result !== 'adopted-server') seedMealsIfNeeded()
+      startSyncLoop()
+      setSyncReady(true)
+    })
+    return () => {
+      cancelled = true
+    }
   }, [seedMealsIfNeeded])
+
+  if (!syncReady) return null
 
   return (
     <div>

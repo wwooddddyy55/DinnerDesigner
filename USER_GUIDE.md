@@ -2,7 +2,31 @@
 
 DinnerDesigner helps you plan a week of meals against how many servings each person in your
 household needs per meal type (breakfast/lunch/dinner), then turns your picks into a shopping list.
-Everything is stored locally in your browser — there's no account and no server.
+There's no account. Data is always cached locally in your browser; if you're using the app through
+the Home Assistant add-on, it also syncs across every device pointed at that add-on (see
+**Cross-device sync** below). Running the app any other way (e.g. `npm run dev`), there's no server at
+all and everything stays local to that one browser, exactly as before.
+
+## Cross-device sync
+
+When you access DinnerDesigner through the Home Assistant add-on (either the sidebar panel or the
+direct `:8099` URL), the add-on keeps one shared copy of your meal library and plans and every device
+that opens the app syncs with it:
+
+- Opening the app pulls the latest shared data down to that device.
+- Any change you make (adding a meal, picking meals for the week, dragging onto the Assignment grid,
+  etc.) is pushed up automatically a moment later.
+- Other devices pick up those changes the next time you switch back to their tab or reopen the app —
+  sync isn't instantaneous in the background while a tab just sits open.
+- If the add-on is briefly unreachable, the app keeps working from that browser's own local copy, the
+  same as before sync existed; it catches back up automatically once reachable again.
+- The very first time sync turns on, whichever device already had data becomes the shared starting
+  point for every other device.
+- There's no login on the sync data itself — anyone who can reach the add-on on your network can see
+  and edit it, the same trust level the add-on's direct port already has today.
+
+This only applies when the app is hosted via the Home Assistant add-on. Running it any other way (for
+example, local development) has no backend to sync with and behaves exactly as it always has.
 
 ## Weekly Setup
 
