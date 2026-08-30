@@ -22,7 +22,11 @@ async function fetchServerState(): Promise<ServerState | null> {
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
   try {
-    const res = await fetch('/api/state', { signal: controller.signal })
+    // Relative, not root-absolute: under Home Assistant Ingress the app is served
+    // under a path prefix, and a leading '/' would resolve against the HA host's
+    // true root instead of that prefix (same issue vite.config.ts's base: './' works
+    // around for asset paths — see DEPLOY.md).
+    const res = await fetch('api/state', { signal: controller.signal })
     if (!res.ok) return null
     return (await res.json()) as ServerState
   } catch {
@@ -34,7 +38,7 @@ async function fetchServerState(): Promise<ServerState | null> {
 
 async function pushServerState(payload: SyncStatePayload): Promise<number | null> {
   try {
-    const res = await fetch('/api/state', {
+    const res = await fetch('api/state', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
