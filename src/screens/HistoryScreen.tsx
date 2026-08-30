@@ -39,24 +39,26 @@ export function HistoryScreen() {
 
       <section className={styles.section}>
         <h2>What haven't we had in a while?</h2>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>Meal</th>
-              <th>Last served</th>
-              <th>Times served</th>
-            </tr>
-          </thead>
-          <tbody>
-            {staleness.map((meal) => (
-              <tr key={meal.mealId}>
-                <td>{meal.name}</td>
-                <td>{formatWeekLabel(meal.lastServedDate)}</td>
-                <td>{meal.timesServed}</td>
+        <div className={styles.scroll}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Meal</th>
+                <th>Last served</th>
+                <th>Times served</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {staleness.map((meal) => (
+                <tr key={meal.mealId}>
+                  <td>{meal.name}</td>
+                  <td>{formatWeekLabel(meal.lastServedDate)}</td>
+                  <td>{meal.timesServed}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </section>
     </div>
   )

@@ -55,6 +55,11 @@
   padding: var(--space-1);
   font-size: 0.8rem;
   font-weight: 600;
+  min-height: 44px;
+  min-width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .cellAvailable {

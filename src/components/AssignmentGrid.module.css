@@ -29,6 +29,12 @@
   align-items: stretch;
 }
 
+@media (max-width: 700px) {
+  .grid {
+    grid-template-columns: 140px repeat(7, minmax(140px, 1fr));
+  }
+}
+
 .headerCell {
   font-size: 0.75rem;
   font-weight: 600;
@@ -48,7 +54,7 @@
 }
 
 .cell {
-  min-height: 40px;
+  min-height: 44px;
   border: 1px dashed var(--color-border);
   border-radius: var(--radius-sm);
   display: flex;
@@ -124,14 +130,14 @@
 
 .weightStepper {
   display: flex;
-  gap: 2px;
+  gap: var(--space-1);
   flex-shrink: 0;
   margin-left: auto;
 }
 
 .weightStepper button {
-  width: 18px;
-  height: 18px;
+  width: 28px;
+  height: 28px;
   line-height: 1;
   padding: 0;
   border: 1px solid var(--color-border);
@@ -149,6 +155,11 @@
   color: var(--color-danger);
   font-weight: 700;
   line-height: 1;
-  padding: 0 var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  min-width: 24px;
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
 }

@@ -27,14 +27,14 @@ export function IngredientListEditor({ ingredients, onChange }: IngredientListEd
       {ingredients.map((ing) => (
         <div className={styles.row} key={ing.id}>
           <input
-            className={styles.input}
+            className={`${styles.input} ${styles.nameField}`}
             type="text"
             placeholder="Ingredient name"
             value={ing.name}
             onChange={(e) => updateIngredient(ing.id, { name: e.target.value })}
           />
           <input
-            className={styles.input}
+            className={`${styles.input} ${styles.qtyField}`}
             type="number"
             min={0}
             step="any"
@@ -43,7 +43,7 @@ export function IngredientListEditor({ ingredients, onChange }: IngredientListEd
             onChange={(e) => updateIngredient(ing.id, { quantity: Number(e.target.value) })}
           />
           <input
-            className={styles.input}
+            className={`${styles.input} ${styles.unitField}`}
             type="text"
             placeholder="Unit"
             value={ing.unit}
@@ -52,7 +52,7 @@ export function IngredientListEditor({ ingredients, onChange }: IngredientListEd
           />
           <button
             type="button"
-            className={styles.removeButton}
+            className={`${styles.removeButton} ${styles.removeField}`}
             onClick={() => removeIngredient(ing.id)}
             aria-label="Remove ingredient"
           >

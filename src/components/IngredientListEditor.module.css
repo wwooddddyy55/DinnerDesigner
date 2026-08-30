@@ -31,3 +31,29 @@
   color: var(--color-text-muted);
   margin-bottom: var(--space-2);
 }
+
+@media (max-width: 700px) {
+  .row {
+    grid-template-columns: 1fr 1fr auto;
+    grid-template-areas:
+      'name name remove'
+      'qty  unit remove';
+  }
+
+  .nameField {
+    grid-area: name;
+  }
+
+  .qtyField {
+    grid-area: qty;
+  }
+
+  .unitField {
+    grid-area: unit;
+  }
+
+  .removeField {
+    grid-area: remove;
+    align-self: center;
+  }
+}

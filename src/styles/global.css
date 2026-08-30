@@ -64,9 +64,10 @@ button {
 }
 
 input,
-select {
+select,
+textarea {
   font-family: inherit;
-  font-size: 0.95rem;
+  font-size: 1rem;
 }
 
 .card {
