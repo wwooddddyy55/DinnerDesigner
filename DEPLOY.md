@@ -41,6 +41,17 @@ There's no image registry or version history kept — Supervisor always rebuilds
 currently on `main`. To roll back, revert `main` to the desired prior commit, bump the version forward
 again (per step 2 above), and deploy as usual.
 
+## Why the Dockerfile's `RUN` line references `BUILD_VERSION`
+
+`docker build` caches layers by the literal command text, not by what the command actually
+fetches — so a plain `RUN git clone ... && npm ci && npm run build` line is identical on every
+build and Supervisor will happily reuse the cached layer, silently serving old code even after
+you've bumped the version and pushed to `main`. `ARG BUILD_VERSION` (which Supervisor always
+passes in, set to `config.yaml`'s `version:`) is echoed into the same `RUN` command specifically
+so its value becomes part of the cache key, forcing a fresh clone/`npm ci`/build whenever the
+version bumps. Don't strip that `echo` out even though it looks like a no-op — removing it
+silently reintroduces stale-build deploys.
+
 ## Why `vite.config.ts` has `base: './'`
 
 Home Assistant's Ingress proxy serves the add-on under a path prefix
