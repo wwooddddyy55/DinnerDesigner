@@ -1,4 +1,4 @@
-import { DAYS_PER_WEEK } from '../types'
+import { DAYS_PER_WEEK, MAX_CELL_OCCUPANTS } from '../types'
 import type { MealAssignment, MealType, PlannedMealEntry, Person, WeeklyPlan } from '../types'
 
 export const CAPACITY_EPSILON = 1e-9
@@ -141,6 +141,23 @@ export function canSetAssignmentWeight(plan: WeeklyPlan, assignmentId: string, p
     if (consumed > entry.totalServings + CAPACITY_EPSILON) return false
   }
   return true
+}
+
+/** Whether `entry` (currently being dragged, or tap-selected) can be placed
+ * into a cell already holding `occupants` for `mealType` — shared by the
+ * drag-and-drop grid and the tap-to-place day view so both interaction modes
+ * agree on cell eligibility. Advisory/UX-only: the store's `assignMealToCell`
+ * re-checks independently (and also enforces the servings-capacity invariant,
+ * which this does not), so a stale or optimistic `true` here can never let an
+ * invalid placement actually land. */
+export function canPlaceEntryInCell(
+  entry: PlannedMealEntry | undefined,
+  mealType: MealType,
+  occupants: { entry: PlannedMealEntry }[],
+): boolean {
+  if (!entry || !entry.mealTypes.includes(mealType)) return false
+  if (occupants.length >= MAX_CELL_OCCUPANTS) return false
+  return !occupants.some((o) => o.entry.id === entry.id)
 }
 
 export interface ShoppingListLine {

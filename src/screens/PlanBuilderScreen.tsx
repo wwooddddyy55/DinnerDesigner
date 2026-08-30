@@ -4,23 +4,17 @@ import {
   DragOverlay,
   PointerSensor,
   TouchSensor,
-  useDraggable,
   useSensor,
   useSensors,
 } from '@dnd-kit/core'
 import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core'
+import { AssignmentDayView } from '../components/AssignmentDayView'
 import { AssignmentGrid } from '../components/AssignmentGrid'
-import { MealTypeFilterChips } from '../components/MealTypeFilterChips'
+import { MealPickerPanel } from '../components/MealPickerPanel'
+import { PickedMealsPanel } from '../components/PickedMealsPanel'
 import { ProgressBar } from '../components/ProgressBar'
-import { ProteinFilterChips } from '../components/ProteinFilterChips'
-import {
-  formatServingCount,
-  getEntryConsumedServings,
-  getMealTypePicked,
-  getMealTypeTarget,
-  isEntryFullyPlaced,
-} from '../lib/calculations'
-import { parseCellDroppableId } from '../lib/dragDrop'
+import { getMealTypePicked, getMealTypeTarget } from '../lib/calculations'
+import { parseCellDroppableId, parsePickedEntryDraggableId } from '../lib/dragDrop'
 import { useAppStore } from '../store/useAppStore'
 import { MEAL_TYPE_LABELS, proteinLabel } from '../types'
 import type { MealType, ProteinType, WeeklyPlan } from '../types'
@@ -28,65 +22,6 @@ import styles from './PlanBuilderScreen.module.css'
 
 interface PlanBuilderScreenProps {
   plan: WeeklyPlan
-}
-
-interface PickedMealCardProps {
-  plan: WeeklyPlan
-  entry: WeeklyPlan['plannedMeals'][number]
-  onRemove: (entryId: string) => void
-  onSetLeftover: (entryId: string, isLeftover: boolean) => void
-  onSetServingsLeft: (entryId: string, servingsLeft: number) => void
-}
-
-function PickedMealCard({ plan, entry, onRemove, onSetLeftover, onSetServingsLeft }: PickedMealCardProps) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: entry.id })
-  const placed = getEntryConsumedServings(plan, entry)
-  const fullyPlaced = isEntryFullyPlaced(plan, entry)
-  const servingsLeft = entry.totalServings - (entry.leftoverServingsUsed ?? 0)
-
-  return (
-    <div
-      ref={setNodeRef}
-      className={`card ${styles.pickedRow} ${isDragging ? styles.pickedRowDragging : ''}`}
-      {...attributes}
-      {...listeners}
-    >
-      <div className={styles.pickerInfo}>
-        <strong>{entry.name}</strong>
-        <span className={styles.pickerMeta}>
-          {proteinLabel(entry.protein, entry.proteinCustomLabel)} · {entry.totalServings} servings/batch
-        </span>
-        <span className={`badge ${fullyPlaced ? styles.placedMet : ''}`}>
-          {formatServingCount(placed)}/{entry.totalServings} placed
-        </span>
-        <label className={styles.checkboxLabel}>
-          <input
-            type="checkbox"
-            checked={entry.isLeftover ?? false}
-            onChange={(e) => onSetLeftover(entry.id, e.target.checked)}
-          />
-          Leftover from last week
-        </label>
-        {entry.isLeftover && (
-          <label className={styles.leftoverServingsLabel}>
-            Servings left
-            <input
-              type="number"
-              className={styles.leftoverServingsInput}
-              min={0}
-              max={entry.totalServings}
-              value={servingsLeft}
-              onChange={(e) => onSetServingsLeft(entry.id, Number(e.target.value))}
-            />
-            / {entry.totalServings}
-          </label>
-        )}
-      </div>
-      <button type="button" className="button buttonDanger" onClick={() => onRemove(entry.id)}>
-        Remove
-      </button>
-    </div>
-  )
 }
 
 export function PlanBuilderScreen({ plan }: PlanBuilderScreenProps) {
@@ -102,6 +37,9 @@ export function PlanBuilderScreen({ plan }: PlanBuilderScreenProps) {
   const [mealTypeFilter, setMealTypeFilter] = useState<MealType[]>([])
   const [proteinFilter, setProteinFilter] = useState<ProteinType[]>([])
   const [draggingEntryId, setDraggingEntryId] = useState<string | null>(null)
+  const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null)
+  const [activeMobileTab, setActiveMobileTab] = useState<'pick' | 'assign'>('pick')
+  const [selectedDay, setSelectedDay] = useState(0)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -111,14 +49,34 @@ export function PlanBuilderScreen({ plan }: PlanBuilderScreenProps) {
   )
 
   function handleDragStart(event: DragStartEvent) {
-    setDraggingEntryId(String(event.active.id))
+    setDraggingEntryId(parsePickedEntryDraggableId(String(event.active.id)))
   }
 
   function handleDragEnd(event: DragEndEvent) {
     setDraggingEntryId(null)
     if (!event.over) return
     const { personId, mealType, day } = parseCellDroppableId(String(event.over.id))
-    assignMealToCell(plan.id, String(event.active.id), personId, mealType, day)
+    const entryId = parsePickedEntryDraggableId(String(event.active.id))
+    assignMealToCell(plan.id, entryId, personId, mealType, day)
+  }
+
+  function handleSelectEntry(entryId: string) {
+    setSelectedEntryId((prev) => {
+      const next = prev === entryId ? null : entryId
+      if (next) setActiveMobileTab('assign')
+      return next
+    })
+  }
+
+  function handleTapPlace(personId: string, mealType: MealType, day: number) {
+    if (!selectedEntryId) return
+    assignMealToCell(plan.id, selectedEntryId, personId, mealType, day)
+    setSelectedEntryId(null)
+  }
+
+  function handleRemove(entryId: string) {
+    removePlannedMeal(plan.id, entryId)
+    setSelectedEntryId((prev) => (prev === entryId ? null : prev))
   }
 
   if (plan.selectedMealTypes.length === 0) {
@@ -151,110 +109,139 @@ export function PlanBuilderScreen({ plan }: PlanBuilderScreenProps) {
 
   const draggingEntry = plan.plannedMeals.find((e) => e.id === draggingEntryId)
 
+  const progressBars = plan.selectedMealTypes.map((type) => (
+    <ProgressBar
+      key={type}
+      picked={getMealTypePicked(plan, type)}
+      target={getMealTypeTarget(plan, type)}
+      label={MEAL_TYPE_LABELS[type]}
+    />
+  ))
+
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className={styles.page}>
         <h2>Plan builder</h2>
 
-        <div className={styles.layout}>
-          <div className={styles.sidebar}>
-            <h3>Choose meals</h3>
-            <MealTypeFilterChips
-              types={plan.selectedMealTypes}
-              selected={mealTypeFilter}
-              onToggle={toggleMealType}
-              onClear={() => setMealTypeFilter([])}
-            />
-            <ProteinFilterChips
-              selected={proteinFilter}
-              onToggle={toggleProtein}
-              onClear={() => setProteinFilter([])}
-            />
-            <div className={styles.pickerList}>
-              {availableMeals.length === 0 && (
+        <div className={styles.desktopOnly}>
+          <div className={styles.layout}>
+            <div className={styles.sidebar}>
+              <MealPickerPanel
+                plan={plan}
+                availableMeals={availableMeals}
+                mealTypeFilter={mealTypeFilter}
+                proteinFilter={proteinFilter}
+                onToggleMealType={toggleMealType}
+                onToggleProtein={toggleProtein}
+                onClearMealTypeFilter={() => setMealTypeFilter([])}
+                onClearProteinFilter={() => setProteinFilter([])}
+                onAdd={(meal) => addPlannedMeal(plan.id, meal)}
+              />
+            </div>
+
+            <div className={styles.main}>
+              <div className={`card ${styles.progressCard}`}>
+                <div className={styles.progressRow}>{progressBars}</div>
+              </div>
+
+              <PickedMealsPanel
+                plan={plan}
+                scope="desktop"
+                selectedEntryId={selectedEntryId}
+                onSelect={handleSelectEntry}
+                onRemove={handleRemove}
+                onSetLeftover={(entryId, isLeftover) => setEntryLeftover(plan.id, entryId, isLeftover)}
+                onSetServingsLeft={(entryId, servingsLeft) => setEntryServingsLeft(plan.id, entryId, servingsLeft)}
+              />
+
+              <div className={styles.assignmentSection}>
+                <h3>Assignment grid</h3>
                 <p className={styles.emptyState}>
-                  No meals match this meal type / protein filter yet.
+                  Drag a picked meal card onto a person's day/meal cell to place a serving. A cell can
+                  hold up to 4 combined items (e.g. lasagna + chips) — drop another card onto an
+                  already-filled cell to add it; each item's share of its own batch shrinks to fit
+                  evenly by default, adjustable with the +/− stepper. Click an item's × to remove it —
+                  the rest rebalance automatically.
                 </p>
-              )}
-              {availableMeals.map((meal) => (
-                <div className={`card ${styles.pickerRow}`} key={meal.id}>
-                  <div className={styles.pickerInfo}>
-                    <strong>{meal.name}</strong>
-                    <span className={styles.pickerMeta}>
-                      {proteinLabel(meal.protein, meal.proteinCustomLabel)} ·{' '}
-                      {meal.servingsPerBatch} servings/batch ·{' '}
-                      {meal.mealTypes
-                        .filter((t) => plan.selectedMealTypes.includes(t))
-                        .map((t) => MEAL_TYPE_LABELS[t])
-                        .join(', ')}
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    className="button buttonSecondary"
-                    onClick={() => addPlannedMeal(plan.id, meal)}
-                  >
-                    + Add
-                  </button>
-                </div>
-              ))}
+                <AssignmentGrid
+                  plan={plan}
+                  draggingEntryId={draggingEntryId}
+                  onClear={(entryId, assignmentId) => clearAssignment(plan.id, entryId, assignmentId)}
+                  onReweight={(entryId, assignmentId, weight) =>
+                    setAssignmentWeight(plan.id, entryId, assignmentId, weight)
+                  }
+                />
+              </div>
             </div>
           </div>
+        </div>
 
-          <div className={styles.main}>
-            <div className={`card ${styles.progressCard}`}>
-              <div className={styles.progressRow}>
-                {plan.selectedMealTypes.map((type) => (
-                  <ProgressBar
-                    key={type}
-                    picked={getMealTypePicked(plan, type)}
-                    target={getMealTypeTarget(plan, type)}
-                    label={MEAL_TYPE_LABELS[type]}
-                  />
-                ))}
-              </div>
-            </div>
+        <div className={styles.mobileOnly}>
+          <div className={styles.mobileTabs}>
+            <button
+              type="button"
+              className={`${styles.mobileTab} ${activeMobileTab === 'pick' ? styles.mobileTabActive : ''}`}
+              onClick={() => setActiveMobileTab('pick')}
+            >
+              Pick meals
+            </button>
+            <button
+              type="button"
+              className={`${styles.mobileTab} ${activeMobileTab === 'assign' ? styles.mobileTabActive : ''}`}
+              onClick={() => setActiveMobileTab('assign')}
+            >
+              Assign
+            </button>
+          </div>
 
-            <div>
-              <h3>Picked meals</h3>
-              <div className={styles.pickedList}>
-                {plan.plannedMeals.length === 0 && (
-                  <p className={styles.emptyState}>Nothing picked yet.</p>
-                )}
-                {plan.plannedMeals.map((entry) => (
-                  <PickedMealCard
-                    key={entry.id}
-                    plan={plan}
-                    entry={entry}
-                    onRemove={(entryId) => removePlannedMeal(plan.id, entryId)}
-                    onSetLeftover={(entryId, isLeftover) => setEntryLeftover(plan.id, entryId, isLeftover)}
-                    onSetServingsLeft={(entryId, servingsLeft) =>
-                      setEntryServingsLeft(plan.id, entryId, servingsLeft)
-                    }
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div className={styles.assignmentSection}>
-              <h3>Assignment grid</h3>
-              <p className={styles.emptyState}>
-                Drag a picked meal card onto a person's day/meal cell to place a serving. A cell can
-                hold up to 4 combined items (e.g. lasagna + chips) — drop another card onto an
-                already-filled cell to add it; each item's share of its own batch shrinks to fit
-                evenly by default, adjustable with the +/− stepper. Click an item's × to remove it —
-                the rest rebalance automatically.
-              </p>
-              <AssignmentGrid
+          {activeMobileTab === 'pick' && (
+            <>
+              <MealPickerPanel
                 plan={plan}
-                draggingEntryId={draggingEntryId}
+                availableMeals={availableMeals}
+                mealTypeFilter={mealTypeFilter}
+                proteinFilter={proteinFilter}
+                onToggleMealType={toggleMealType}
+                onToggleProtein={toggleProtein}
+                onClearMealTypeFilter={() => setMealTypeFilter([])}
+                onClearProteinFilter={() => setProteinFilter([])}
+                onAdd={(meal) => addPlannedMeal(plan.id, meal)}
+              />
+              <PickedMealsPanel
+                plan={plan}
+                scope="mobile"
+                selectedEntryId={selectedEntryId}
+                onSelect={handleSelectEntry}
+                onRemove={handleRemove}
+                onSetLeftover={(entryId, isLeftover) => setEntryLeftover(plan.id, entryId, isLeftover)}
+                onSetServingsLeft={(entryId, servingsLeft) => setEntryServingsLeft(plan.id, entryId, servingsLeft)}
+              />
+            </>
+          )}
+
+          {activeMobileTab === 'assign' && (
+            <>
+              <div className={`card ${styles.progressCard}`}>
+                <div className={styles.progressRow}>{progressBars}</div>
+              </div>
+              <p className={styles.emptyState}>
+                {selectedEntryId
+                  ? 'Tap a highlighted cell to place the selected meal.'
+                  : "Tap a picked meal on the \"Pick meals\" tab to select it, then come back here and tap a cell."}
+              </p>
+              <AssignmentDayView
+                plan={plan}
+                day={selectedDay}
+                onDayChange={setSelectedDay}
+                selectedEntryId={selectedEntryId}
+                onTapPlace={handleTapPlace}
                 onClear={(entryId, assignmentId) => clearAssignment(plan.id, entryId, assignmentId)}
                 onReweight={(entryId, assignmentId, weight) =>
                   setAssignmentWeight(plan.id, entryId, assignmentId, weight)
                 }
               />
-            </div>
-          </div>
+            </>
+          )}
         </div>
       </div>
       <DragOverlay>

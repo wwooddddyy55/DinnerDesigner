@@ -19,3 +19,11 @@
   color: var(--color-chip-active-text);
   border-color: var(--color-chip-active-bg);
 }
+
+@media (max-width: 700px) {
+  .chip {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+}

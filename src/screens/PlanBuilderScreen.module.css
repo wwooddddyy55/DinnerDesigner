@@ -38,16 +38,44 @@
   gap: var(--space-4);
 }
 
+.desktopOnly {
+  display: block;
+}
+
+.mobileOnly {
+  display: none;
+}
+
+.mobileTabs {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.mobileTab {
+  flex: 1;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  font-weight: 600;
+  min-height: 44px;
+}
+
+.mobileTabActive {
+  background: var(--color-chip-bg);
+  color: var(--color-text);
+  border-color: var(--color-primary);
+}
+
 @media (max-width: 700px) {
-  .layout {
-    grid-template-columns: 1fr;
+  .desktopOnly {
+    display: none;
   }
 
-  .sidebar {
-    position: static;
-    max-height: none;
-    overflow-y: visible;
-    padding-right: 0;
+  .mobileOnly {
+    display: block;
   }
 }
 
@@ -63,8 +91,6 @@
   flex-direction: column;
   gap: var(--space-2);
   margin-top: var(--space-3);
-  max-height: 280px;
-  overflow-y: auto;
 }
 
 .pickerRow,
@@ -77,10 +103,7 @@
 }
 
 .pickedRow {
-  cursor: grab;
-  /* Let the drag sensors own touch gestures on the card instead of the
-     browser's default scroll/pan handling. */
-  touch-action: none;
+  cursor: pointer;
 }
 
 .pickedRowDragging {
@@ -92,9 +115,34 @@
   box-shadow: var(--shadow-md, 0 4px 12px rgba(0, 0, 0, 0.2));
 }
 
+.pickedRowSelected {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+
+.dragHandle {
+  flex-shrink: 0;
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  font-size: 1.1rem;
+  color: var(--color-text-muted);
+  cursor: grab;
+  /* Let the drag sensors own touch gestures on the handle instead of the
+     browser's default scroll/pan handling. */
+  touch-action: none;
+}
+
 .pickerInfo {
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-width: 0;
 }
 
 .pickerMeta {
@@ -138,4 +186,44 @@
   padding: 2px 4px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
+}
+
+@media (max-width: 700px) {
+  .pickerRow,
+  .pickedRow {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-areas:
+      'handle info'
+      'action action';
+    align-items: start;
+  }
+
+  .pickerRow {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      'info'
+      'action';
+  }
+
+  .dragHandle {
+    grid-area: handle;
+  }
+
+  .pickerInfo {
+    grid-area: info;
+  }
+
+  .pickerRow > :global(.button),
+  .pickedRow > :global(.button) {
+    grid-area: action;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .leftoverServingsInput {
+    width: 4.5em;
+    min-height: 44px;
+    padding: var(--space-2);
+  }
 }

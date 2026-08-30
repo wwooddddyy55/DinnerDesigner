@@ -1,0 +1,116 @@
+.cell {
+  min-height: 44px;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  font-size: 0.8rem;
+}
+
+.cellDisabled {
+  background: var(--color-chip-bg);
+  border-style: solid;
+  opacity: 0.5;
+}
+
+.cellEmpty {
+  background: var(--color-surface);
+}
+
+.cellFilled {
+  background: var(--color-success-bg);
+  border: 1px solid var(--color-success);
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-1);
+}
+
+.cellOver {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+
+.cellTapEligible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+  cursor: pointer;
+}
+
+.occupantRow {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-bottom: var(--space-1);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.occupantRow:last-child {
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.occupantTop {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.occupantMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.occupantName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  flex: 1;
+  min-width: 0;
+}
+
+.occupantFraction {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.weightStepper {
+  display: flex;
+  gap: var(--space-1);
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.weightStepper button {
+  width: 28px;
+  height: 28px;
+  line-height: 1;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+}
+
+.weightStepper button:disabled {
+  opacity: 0.4;
+}
+
+.clearButton {
+  border: none;
+  background: transparent;
+  color: var(--color-danger);
+  font-weight: 700;
+  line-height: 1;
+  padding: var(--space-1) var(--space-2);
+  min-width: 24px;
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}

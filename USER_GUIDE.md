@@ -80,6 +80,12 @@ page via its link rather than being retyped into the app's notes field.
 For the active week, progress bars for every meal type you're tracking (breakfast/lunch/dinner) are
 shown at once, so you can see servings picked vs. target across all of them without switching tabs.
 
+**On a narrow (mobile) screen**, the page becomes two tabs instead of one long scrolling page:
+**Pick meals** (the picker and picked-meals list below) and **Assign** (the progress bars and the
+Assignment grid, shown as one day at a time — see **Placing meals on mobile** below). Selecting a
+picked meal to place automatically switches you to the Assign tab. On a wider screen the layout is
+unchanged: a sidebar picker alongside the picked-meals list and full Assignment grid.
+
 **Choose meals** is a sidebar panel (scrolls independently, stays pinned alongside the rest of the
 page) listing library meals you can add, filterable by two rows of toggle chips:
 meal-type chips (scoped to the meal types this plan tracks) and protein chips. Select any combination
@@ -134,6 +140,24 @@ per person) below the picked-meals list:
 - You don't have to place the full batch right away; unplaced servings simply don't count toward any
   progress bar yet (e.g. if part of a batch is being frozen for later), and the entry itself always
   stays visible in the picked list regardless of how much of the batch is placed.
+
+### Placing meals on mobile
+
+Precise drag-and-drop is hard on a touchscreen, so on a narrow screen you place meals by tapping
+instead:
+
+1. On the **Pick meals** tab, tap a card in the **Picked meals** list to select it (it gets a
+   highlighted outline). You're automatically switched to the **Assign** tab.
+2. The Assign tab shows the Assignment grid one day at a time — use the day switcher across the top
+   to pick which of the week's 7 days you're placing into. Eligible cells for the selected meal are
+   highlighted.
+3. Tap a highlighted cell to place a serving there — same result as dragging on a larger screen.
+   Placing clears the selection; tap the card again to select it and place another serving elsewhere.
+4. Tap an already-selected card again to deselect it without placing anything.
+
+The drag handle (the small grip icon on each card) still works if you'd rather drag on a touchscreen,
+but tapping is the easier path on a phone. On a wider screen, dragging a card onto the full-week grid
+works exactly as described above in **Leftovers**.
 
 ### Combining meals in one slot
 

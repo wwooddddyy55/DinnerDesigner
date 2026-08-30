@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { MealAssignment, PlannedMealEntry, Person, WeeklyPlan } from '../types'
+import { MAX_CELL_OCCUPANTS } from '../types'
 import {
+  canPlaceEntryInCell,
   canSetAssignmentWeight,
   findCellAssignments,
   formatServingCount,
@@ -342,6 +344,36 @@ describe('canSetAssignmentWeight', () => {
     const plan = makePlan({ plannedMeals: [entryA, entryB] })
     // shrinking a's weight grows b's derived share of the shared cell past what entryB can afford
     expect(canSetAssignmentWeight(plan, 'a', 0)).toBe(false)
+  })
+})
+
+describe('canPlaceEntryInCell', () => {
+  it('rejects when no entry is selected/dragging', () => {
+    expect(canPlaceEntryInCell(undefined, 'dinner', [])).toBe(false)
+  })
+
+  it('rejects an entry not eligible for the target meal type', () => {
+    const entry = makeEntry({ mealTypes: ['breakfast'] })
+    expect(canPlaceEntryInCell(entry, 'dinner', [])).toBe(false)
+  })
+
+  it('rejects a cell already at MAX_CELL_OCCUPANTS', () => {
+    const entry = makeEntry({ id: 'new-entry', mealTypes: ['dinner'] })
+    const occupants = Array.from({ length: MAX_CELL_OCCUPANTS }, (_, i) =>
+      makeEntry({ id: `occupant-${i}` }),
+    ).map((occupant) => ({ entry: occupant }))
+    expect(canPlaceEntryInCell(entry, 'dinner', occupants)).toBe(false)
+  })
+
+  it('rejects an entry already occupying the cell', () => {
+    const entry = makeEntry({ id: 'e1', mealTypes: ['dinner'] })
+    expect(canPlaceEntryInCell(entry, 'dinner', [{ entry }])).toBe(false)
+  })
+
+  it('accepts an eligible entry for a cell with room', () => {
+    const entry = makeEntry({ id: 'e1', mealTypes: ['dinner'] })
+    const other = makeEntry({ id: 'e2' })
+    expect(canPlaceEntryInCell(entry, 'dinner', [{ entry: other }])).toBe(true)
   })
 })
 
