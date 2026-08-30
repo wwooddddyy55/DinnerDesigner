@@ -1,0 +1,141 @@
+.page {
+  padding: var(--space-5);
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.progressCard {
+  padding: var(--space-4);
+}
+
+.progressRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-4);
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.sidebar {
+  position: sticky;
+  top: var(--space-4);
+  max-height: calc(100vh - var(--space-6));
+  overflow-y: auto;
+  padding-right: var(--space-2);
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+@media (max-width: 700px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    position: static;
+    max-height: none;
+    overflow-y: visible;
+    padding-right: 0;
+  }
+}
+
+.pickerList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.pickedList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.pickerRow,
+.pickedRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-3);
+}
+
+.pickedRow {
+  cursor: grab;
+  /* Let the drag sensors own touch gestures on the card instead of the
+     browser's default scroll/pan handling. */
+  touch-action: none;
+}
+
+.pickedRowDragging {
+  opacity: 0.4;
+}
+
+.pickedRowOverlay {
+  cursor: grabbing;
+  box-shadow: var(--shadow-md, 0 4px 12px rgba(0, 0, 0, 0.2));
+}
+
+.pickerInfo {
+  display: flex;
+  flex-direction: column;
+}
+
+.pickerMeta {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.emptyState {
+  color: var(--color-text-muted);
+}
+
+.assignmentSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.placedMet {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: 0.8rem;
+  margin-top: var(--space-1);
+}
+
+.leftoverServingsLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.leftoverServingsInput {
+  width: 3.5em;
+  padding: 2px 4px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}

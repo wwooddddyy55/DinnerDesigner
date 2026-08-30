@@ -1,0 +1,130 @@
+:root {
+  --color-bg: #f7f5f2;
+  --color-surface: #ffffff;
+  --color-border: #e2ded8;
+  --color-text: #2b2622;
+  --color-text-muted: #756b62;
+  --color-primary: #b5502f;
+  --color-primary-hover: #9a4127;
+  --color-primary-contrast: #ffffff;
+  --color-danger: #b3261e;
+  --color-success: #3f7d4f;
+  --color-success-bg: #e6f2e8;
+  --color-warning-bg: #fdf1e0;
+  --color-chip-bg: #efe9e3;
+  --color-chip-active-bg: #b5502f;
+  --color-chip-active-text: #ffffff;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  color-scheme: light;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+h1,
+h2,
+h3,
+h4 {
+  margin: 0 0 var(--space-2);
+  font-weight: 600;
+}
+
+p {
+  margin: 0 0 var(--space-2);
+  color: var(--color-text-muted);
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+input,
+select {
+  font-family: inherit;
+  font-size: 0.95rem;
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-4);
+  font-size: 0.9rem;
+  font-weight: 600;
+  background: var(--color-primary);
+  color: var(--color-primary-contrast);
+  transition: background-color 0.15s ease;
+}
+
+.button:hover {
+  background: var(--color-primary-hover);
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.buttonSecondary {
+  background: transparent;
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+
+.buttonSecondary:hover {
+  background: var(--color-chip-bg);
+}
+
+.buttonDanger {
+  background: transparent;
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+}
+
+.buttonDanger:hover {
+  background: #fbeceb;
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px var(--space-2);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--color-chip-bg);
+  color: var(--color-text);
+}

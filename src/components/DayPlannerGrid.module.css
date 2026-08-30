@@ -1,0 +1,64 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.personBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.personLabel {
+  margin: 0;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-text-muted);
+}
+
+.scroll {
+  overflow-x: auto;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 140px repeat(7, minmax(64px, 1fr));
+  gap: var(--space-1);
+  align-items: stretch;
+}
+
+.headerCell {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-align: center;
+  padding: var(--space-1);
+}
+
+.nameCell {
+  position: sticky;
+  left: 0;
+  background: var(--color-bg);
+  display: flex;
+  align-items: center;
+  padding: var(--space-1) var(--space-2);
+  font-weight: 600;
+}
+
+.cell {
+  border: 1px solid var(--color-border);
+  background: var(--color-chip-bg);
+  color: var(--color-text-muted);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.cellAvailable {
+  background: var(--color-chip-active-bg);
+  color: var(--color-chip-active-text);
+  border-color: var(--color-chip-active-bg);
+}

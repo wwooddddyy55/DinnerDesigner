@@ -1,0 +1,36 @@
+.page {
+  padding: var(--space-5);
+  max-width: 640px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+}
+
+.checked {
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+
+.quantity {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  margin-left: auto;
+}
+
+.emptyState {
+  color: var(--color-text-muted);
+}
