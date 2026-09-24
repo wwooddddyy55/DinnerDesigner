@@ -1,6 +1,8 @@
 import { useState } from 'react'
+import type { FocusEvent } from 'react'
 import { MEAL_IMPORT_PROMPT_TEMPLATE, parseMealDraft } from '../lib/mealImport'
 import type { MealDraft } from '../lib/mealImport'
+import { copyToClipboard } from '../lib/clipboard'
 import styles from './ImportMealDialog.module.css'
 
 interface ImportMealDialogProps {
@@ -12,6 +14,7 @@ export function ImportMealDialog({ onCancel, onImported }: ImportMealDialogProps
   const [text, setText] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [showPromptFallback, setShowPromptFallback] = useState(false)
 
   function handleParse() {
     try {
@@ -24,9 +27,16 @@ export function ImportMealDialog({ onCancel, onImported }: ImportMealDialogProps
   }
 
   async function handleCopyPrompt() {
-    await navigator.clipboard.writeText(MEAL_IMPORT_PROMPT_TEMPLATE)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    if (await copyToClipboard(MEAL_IMPORT_PROMPT_TEMPLATE)) {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } else {
+      setShowPromptFallback(true)
+    }
+  }
+
+  function handlePromptFallbackFocus(e: FocusEvent<HTMLTextAreaElement>) {
+    e.target.select()
   }
 
   return (
@@ -40,6 +50,23 @@ export function ImportMealDialog({ onCancel, onImported }: ImportMealDialogProps
         <button type="button" className="button buttonSecondary" onClick={handleCopyPrompt}>
           {copied ? 'Copied!' : 'Copy chat prompt'}
         </button>
+
+        {showPromptFallback && (
+          <>
+            <label className={styles.label} htmlFor="import-prompt-fallback">
+              Couldn't copy automatically — select the text below and copy it (Ctrl/Cmd+C)
+            </label>
+            <textarea
+              id="import-prompt-fallback"
+              className={styles.textarea}
+              value={MEAL_IMPORT_PROMPT_TEMPLATE}
+              readOnly
+              autoFocus
+              onFocus={handlePromptFallbackFocus}
+              rows={4}
+            />
+          </>
+        )}
 
         <label className={styles.label} htmlFor="import-json">
           Recipe JSON
