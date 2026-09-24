@@ -62,7 +62,9 @@ keep their own snapshot of a meal at the time it was picked.
 
 Click **Import recipe** to add a meal without typing it in by hand:
 
-1. Click **Copy chat prompt** to copy a ready-made prompt to your clipboard.
+1. Click **Copy chat prompt** to copy a ready-made prompt to your clipboard. If the browser won't allow
+   an automatic copy (common when reaching the Home Assistant add-on over plain HTTP), a text box
+   appears with the prompt pre-selected so you can copy it manually (Ctrl/Cmd+C).
 2. Paste that prompt into any Claude chat, followed by a recipe link (or the recipe's text pasted
    directly). Claude replies with a single JSON object describing the meal — name, meal types,
    protein, servings per batch, ingredients, a link back to the source recipe, and any brief notes.
