@@ -1,5 +1,5 @@
 import { useDraggable } from '@dnd-kit/core'
-import { formatServingCount, getEntryConsumedServings, isEntryFullyPlaced } from '../lib/calculations'
+import { CAPACITY_EPSILON, formatServingCount, getEntryConsumedServings } from '../lib/calculations'
 import { pickedEntryDraggableId } from '../lib/dragDrop'
 import { proteinLabel } from '../types'
 import type { WeeklyPlan } from '../types'
@@ -30,7 +30,8 @@ function PickedMealCard({
     id: pickedEntryDraggableId(scope, entry.id),
   })
   const placed = getEntryConsumedServings(plan, entry)
-  const fullyPlaced = isEntryFullyPlaced(plan, entry)
+  const fullyPlaced = placed >= entry.totalServings - CAPACITY_EPSILON
+  const overCapacity = placed > entry.totalServings + CAPACITY_EPSILON
   const servingsLeft = entry.totalServings - (entry.leftoverServingsUsed ?? 0)
 
   return (
@@ -54,8 +55,15 @@ function PickedMealCard({
         <span className={styles.pickerMeta}>
           {proteinLabel(entry.protein, entry.proteinCustomLabel)} · {entry.totalServings} servings/batch
         </span>
-        <span className={`badge ${fullyPlaced ? styles.placedMet : ''}`}>
-          {formatServingCount(placed)}/{entry.totalServings} placed
+        <span
+          className={`badge ${overCapacity ? styles.placedOver : fullyPlaced ? styles.placedMet : ''}`}
+          title={
+            overCapacity
+              ? 'More servings are placed than this batch makes — usually after removing something from a shared cell. Remove a placement or use the +/− stepper to fix it.'
+              : undefined
+          }
+        >
+          {formatServingCount(placed)}/{entry.totalServings} placed{overCapacity ? ' — over batch size' : ''}
         </span>
         <label className={styles.checkboxLabel} onClick={(e) => e.stopPropagation()}>
           <input

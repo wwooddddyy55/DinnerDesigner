@@ -15,15 +15,36 @@ that opens the app syncs with it:
 
 - Opening the app pulls the latest shared data down to that device.
 - Any change you make (adding a meal, picking meals for the week, dragging onto the Assignment grid,
-  etc.) is pushed up automatically a moment later.
-- Other devices pick up those changes the next time you switch back to their tab or reopen the app —
-  sync isn't instantaneous in the background while a tab just sits open.
-- If the add-on is briefly unreachable, the app keeps working from that browser's own local copy, the
-  same as before sync existed; it catches back up automatically once reachable again.
+  etc.) is pushed up automatically a moment later — and immediately if you switch away from or close
+  the tab, so a last-second edit isn't lost.
+- Other devices pick up those changes when you switch back to their tab or window, reopen the app, or
+  within about 30 seconds while the app is open and visible.
+- **Edits on two devices at once are merged, not overwritten.** If another device saved changes
+  since this one last synced, the two sets of changes are combined per meal and per week: a meal or
+  week changed on only one device keeps that device's version (including deletions), and one changed
+  on both keeps whichever was edited most recently. A meal or week deleted on one device but edited
+  on the other is kept.
+- If the add-on is unreachable (or rejects a save), the app keeps working from that browser's own
+  local copy and keeps retrying. Unsaved changes are remembered even if you close the tab or reload,
+  and are merged in once the add-on is reachable again.
+- A small status label at the right end of the top bar shows **Synced**, **Saving…**, **Sync error —
+  retrying**, or **Offline** (hover it for details). It's hidden when the app has no add-on to sync
+  with.
 - The very first time sync turns on, whichever device already had data becomes the shared starting
   point for every other device.
-- There's no login on the sync data itself — anyone who can reach the add-on on your network can see
-  and edit it, the same trust level the add-on's direct port already has today.
+- There's no login on the sync data itself — anyone who can reach the add-on's direct `:8099` port on
+  your network can see, edit, or even erase it (the sidebar panel goes through your Home Assistant
+  login). If you don't need the direct port, turn it off: in Home Assistant open the add-on's
+  **Configuration** tab and clear the port under **Network**, then restart the add-on; the sidebar
+  panel keeps working.
+- **Backups:** the add-on keeps a rolling set of the last 50 snapshots of the shared data (at most
+  one per minute) in its `/data/backups` folder. If the shared data is ever lost or wrongly
+  overwritten, stop the add-on, copy the snapshot you want over `state.json` in the add-on's data
+  directory, and start it again. That directory is only reachable from the Home Assistant host
+  itself (under `/mnt/data/supervisor/addons/data/`, e.g. via an SSH add-on with host access), so
+  regular **Export data** files remain the easiest backup to restore from. If `state.json` itself
+  becomes unreadable, the add-on moves it aside and starts from the newest readable snapshot
+  automatically.
 
 This only applies when the app is hosted via the Home Assistant add-on. Running it any other way (for
 example, local development) has no backend to sync with and behaves exactly as it always has.
@@ -45,7 +66,9 @@ example, local development) has no backend to sync with and behaves exactly as i
 - **Export data** downloads your full meal library and plan history as a JSON file. **Import data**
   loads a previously exported file, replacing everything currently in the app. Importing an export
   from an older version of the app is supported — old-format planned-meal entries are converted
-  automatically.
+  automatically. Damaged or hand-edited files are repaired where possible (records too broken to use
+  are skipped, invalid fields reset to defaults) rather than breaking the app; a file exported from a
+  *newer* version of the app is refused.
 - **Delete week**: with a week selected, click **Delete week** next to the picker to permanently
   remove it (people, meal picks, and assignments included) after a confirmation prompt. There's no
   undo, and no auto-selection of another week afterward — the picker just goes back to "Select a
@@ -55,7 +78,9 @@ example, local development) has no backend to sync with and behaves exactly as i
 
 Add, edit, filter, and delete meals. Each meal has a name, protein, one or more eligible meal types
 (breakfast/lunch/dinner), a servings-per-batch count, an ingredient list, and an optional link back to
-the original recipe. Deleting a meal from the library doesn't affect weeks that already used it — plans
+the original recipe. The recipe link must be a web address (`http://` or `https://`; a bare
+`example.com/recipe` is treated as `https://`) — anything else is rejected when saving, and silently
+dropped when importing. Deleting a meal from the library doesn't affect weeks that already used it — plans
 keep their own snapshot of a meal at the time it was picked.
 
 ### Importing a recipe
@@ -176,6 +201,11 @@ meal card onto a cell that's **already holding a meal** to combine them there:
 - Click any item's **×** to remove just that one from the cell — the remaining items automatically
   rebalance to split the cell evenly again (e.g. a 3-way even split becomes 50/50 once one item is
   removed), with no need to manually readjust the others.
+- Because the remaining items' shares grow, removing an item (or removing a whole picked meal, or a
+  person) can leave another item's batch with more servings placed than it makes. Removing is never
+  blocked; instead that meal's "X/Y placed" badge turns red with **— over batch size**. Fix it by
+  removing one of its placements, or with the −/+ buttons (changes that reduce the overage are
+  allowed even while it's still over).
 - Combining only changes how much of *that item's own batch* a slot consumes — it does not change the
   shopping list, which still counts each batch's ingredients exactly once regardless of how many
   slots (or how much of each slot) it's spread across.
@@ -197,6 +227,10 @@ The History tab looks across every week you've ever planned (no active week requ
 If you haven't started any weekly plans yet, this tab just shows a short empty-state message.
 
 ## Known Limitations
+
+- Sync merges whole meals and whole weeks: if the *same* meal or the *same* week is edited on two
+  devices before either syncs, the most recently edited version of that meal/week wins and the other
+  device's changes to it are dropped (changes to *different* meals/weeks are always kept).
 
 - The Day planner and Assignment grid toggle/place one cell at a time — there's no bulk action to
   mark a whole row or column available/unavailable, or to place a batch across several cells at

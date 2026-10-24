@@ -1,4 +1,5 @@
 import { generateId } from './id'
+import { toSafeHttpUrl } from './url'
 import { MEAL_TYPES, PROTEIN_TYPES } from '../types'
 import type { Ingredient, Meal, MealType, ProteinType } from '../types'
 
@@ -87,8 +88,11 @@ export function parseMealDraft(text: string): MealDraft {
   if (typeof raw.notes === 'string' && raw.notes.trim().length > 0) {
     draft.notes = raw.notes.trim()
   }
-  if (typeof raw.sourceUrl === 'string' && raw.sourceUrl.trim().length > 0) {
-    draft.sourceUrl = raw.sourceUrl.trim()
+  // Only http(s) links survive; anything else (javascript:, data:, junk) is
+  // dropped rather than failing the whole import over an optional field.
+  const sourceUrl = toSafeHttpUrl(raw.sourceUrl)
+  if (sourceUrl) {
+    draft.sourceUrl = sourceUrl
   }
 
   return draft

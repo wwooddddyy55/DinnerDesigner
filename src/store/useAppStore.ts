@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware'
 import { createSeedMeals } from '../data/seedMeals'
 import { CAPACITY_EPSILON, canSetAssignmentWeight, findCellAssignments, getEntryConsumedServings } from '../lib/calculations'
 import { generateId } from '../lib/id'
+import { CURRENT_SCHEMA_VERSION, migratePerson, migratePlannedMealEntry, normalizeAppData } from '../lib/migrations'
 import type { Meal, MealAssignment, MealType, Person, PlannedMealEntry, WeeklyPlan } from '../types'
 import { DAYS_PER_WEEK, MAX_ASSIGNMENT_WEIGHT, MAX_CELL_OCCUPANTS, MIN_ASSIGNMENT_WEIGHT } from '../types'
 
@@ -56,51 +57,9 @@ function touchPlan(plan: WeeklyPlan): WeeklyPlan {
   return { ...plan, updatedAt: new Date().toISOString() }
 }
 
-/** Converts a pre-day-planner Person (numeric `servingsPerMealType`) into
- * the current `availability` shape. For each meal type the person had an
- * explicit weekly count for, marks that many of the first N days (Mon-first,
- * capped at 7) available — an arbitrary but deterministic reconstruction
- * that preserves the aggregate weekly target exactly, even though the
- * specific days are a guess. A meal type the person never had a count for is
- * left absent so it falls back to the same "all 7 days available" default a
- * brand-new person gets. No-ops on already-current data. Shared by the
- * localStorage persist migration and JSON import. */
-export function migratePerson(person: any): Person {
-  if (person.availability) return person as Person
-  const availability: Partial<Record<MealType, boolean[]>> = {}
-  for (const [type, count] of Object.entries(person.servingsPerMealType ?? {})) {
-    const n = Math.max(0, Math.min(Number(count) || 0, DAYS_PER_WEEK))
-    availability[type as MealType] = Array.from({ length: DAYS_PER_WEEK }, (_, i) => i < n)
-  }
-  const { servingsPerMealType: _servingsPerMealType, ...rest } = person
-  return { ...rest, availability }
-}
-
-/** Converts an older-shape PlannedMealEntry into the current shape. Handles
- * both the pre-leftovers-feature shape (single `mealType` + `servingsPerBatch`)
- * and the pre-day-planner shape (`servingsByType`) — neither carries
- * person/day information, so both collapse to an empty `assignments: []`;
- * previously-picked meals become fully unplaced and must be re-dragged onto
- * the day grid. Also backfills `weight: 1` onto any assignment missing it
- * (pre-combined-slots data), idempotently. Shared by the localStorage persist
- * migration and JSON import. */
-export function migratePlannedMealEntry(entry: any, meals: Meal[]): PlannedMealEntry {
-  if (entry.assignments) {
-    return {
-      ...entry,
-      assignments: entry.assignments.map((a: any) => ({ weight: 1, ...a })),
-    } as PlannedMealEntry
-  }
-  if (entry.servingsByType) {
-    const { servingsByType: _servingsByType, ...rest } = entry
-    return { ...rest, assignments: [] }
-  }
-  const meal = meals.find((m) => m.id === entry.mealId)
-  const mealTypes: MealType[] = meal?.mealTypes ?? [entry.mealType]
-  const totalServings: number = entry.servingsPerBatch ?? 0
-  const { mealType: _mealType, servingsPerBatch: _servingsPerBatch, ...rest } = entry
-  return { ...rest, mealTypes, totalServings, assignments: [] }
-}
+// Re-exported for existing callers; the implementations live in lib/migrations.ts
+// so lib code (sync, import) doesn't depend on store internals.
+export { migratePerson, migratePlannedMealEntry }
 
 export const useAppStore = create<AppState>()(
   persist(
@@ -416,19 +375,12 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'dinner-designer-storage',
-      version: 4,
-      migrate: (persistedState, version) => {
-        const state = persistedState as { meals?: Meal[]; plans?: WeeklyPlan[] } &
-          Record<string, unknown>
-        if (version < 4 && Array.isArray(state?.plans)) {
-          state.plans = state.plans.map((plan: any) => ({
-            ...plan,
-            people: (plan.people ?? []).map((p: any) => migratePerson(p)),
-            plannedMeals: (plan.plannedMeals ?? []).map((e: any) =>
-              migratePlannedMealEntry(e, (state.meals as Meal[]) ?? []),
-            ),
-          }))
-        }
+      version: CURRENT_SCHEMA_VERSION,
+      migrate: (persistedState) => {
+        const state = (persistedState ?? {}) as Record<string, unknown>
+        const { meals, plans } = normalizeAppData(state)
+        state.meals = meals
+        state.plans = plans
         return state as unknown as AppState
       },
     },
