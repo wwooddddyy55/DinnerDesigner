@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { toSafeHttpUrl } from '../lib/url'
 import { MEAL_TYPE_LABELS, proteinLabel } from '../types'
 import type { Meal } from '../types'
 import styles from './MealCard.module.css'
@@ -11,6 +12,9 @@ interface MealCardProps {
 }
 
 export function MealCard({ meal, onEdit, onDelete, actionSlot }: MealCardProps) {
+  // Re-checked at render time too, as defense in depth for data that predates
+  // (or bypassed) the import/sync normalization.
+  const sourceUrl = toSafeHttpUrl(meal.sourceUrl)
   return (
     <div className={`card ${styles.card}`}>
       <div className={styles.header}>
@@ -32,10 +36,10 @@ export function MealCard({ meal, onEdit, onDelete, actionSlot }: MealCardProps) 
           {meal.ingredients.map((i) => i.name).join(', ')}
         </div>
       )}
-      {meal.sourceUrl && (
+      {sourceUrl && (
         <a
           className={styles.sourceLink}
-          href={meal.sourceUrl}
+          href={sourceUrl}
           target="_blank"
           rel="noreferrer noopener"
         >

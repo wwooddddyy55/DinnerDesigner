@@ -1,3 +1,6 @@
+import { useSyncExternalStore } from 'react'
+import { getSyncStatus, subscribeSyncStatus } from '../lib/sync'
+import type { SyncStatus } from '../lib/sync'
 import styles from './NavBar.module.css'
 
 export type View = 'setup' | 'library' | 'plan' | 'shopping-list' | 'history'
@@ -16,7 +19,22 @@ const TABS: { id: View; label: string; requiresPlan?: boolean }[] = [
   { id: 'history', label: 'History' },
 ]
 
+const SYNC_LABELS: Record<Exclude<SyncStatus, 'local-only'>, { text: string; title: string }> = {
+  synced: { text: 'Synced', title: 'All changes are saved to the add-on and shared with your other devices.' },
+  saving: { text: 'Saving…', title: 'Sending your latest changes to the add-on.' },
+  error: {
+    text: 'Sync error — retrying',
+    title: "The add-on didn't accept the last save. Your changes are kept on this device and will be retried.",
+  },
+  offline: {
+    text: 'Offline',
+    title: "Can't reach the add-on. Changes are kept on this device and will sync when it's reachable again.",
+  },
+}
+
 export function NavBar({ current, onNavigate, hasActivePlan }: NavBarProps) {
+  const syncStatus = useSyncExternalStore(subscribeSyncStatus, getSyncStatus)
+  const syncLabel = syncStatus === 'local-only' ? null : SYNC_LABELS[syncStatus]
   return (
     <nav className={styles.bar}>
       <span className={styles.brand}>DinnerDesigner</span>
@@ -35,6 +53,18 @@ export function NavBar({ current, onNavigate, hasActivePlan }: NavBarProps) {
           </button>
         )
       })}
+      {syncLabel && (
+        <>
+          <span className={styles.spacer} />
+          <span
+            className={`${styles.syncStatus} ${syncStatus === 'error' || syncStatus === 'offline' ? styles.syncStatusWarn : ''}`}
+            title={syncLabel.title}
+            role="status"
+          >
+            {syncLabel.text}
+          </span>
+        </>
+      )}
     </nav>
   )
 }

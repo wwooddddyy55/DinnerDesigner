@@ -40,6 +40,7 @@ Walk through this before considering any commit in this repo done:
    why this change doesn't need it.
 2. **Version bump** — confirm `dinnerdesigner/config.yaml`'s `version:` was bumped for any fix/feature
    change, or note why this change doesn't need it (docs-only, etc).
-3. **No secrets** — confirm no `.pfx` files, certificate thumbprints, or signing passwords are committed.
+3. **No secrets or personal data** — confirm no API keys/tokens, `.env` files, or real household data
+   (a `state.json`/backup copied out of the add-on, or a `dinnerdesigner-export-*.json`) are committed.
 4. **Commit message** — confirm it reflects the actual scope of the change (docs-only vs. code vs.
     installer vs. mixed).

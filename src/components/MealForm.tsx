@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { generateId } from '../lib/id'
+import { toSafeHttpUrl } from '../lib/url'
 import { MEAL_TYPE_LABELS, MEAL_TYPES, PROTEIN_TYPES } from '../types'
 import type { Ingredient, Meal, MealType, ProteinType } from '../types'
 import { IngredientListEditor } from './IngredientListEditor'
@@ -48,6 +49,13 @@ export function MealForm({ initialMeal, onCancel, onSave }: MealFormProps) {
       return
     }
 
+    const trimmedUrl = sourceUrl.trim()
+    const safeUrl = toSafeHttpUrl(trimmedUrl)
+    if (trimmedUrl.length > 0 && !safeUrl) {
+      setError('Recipe link must be a web address (http:// or https://).')
+      return
+    }
+
     const cleanedIngredients = ingredients
       .map((i) => ({ ...i, id: i.id || generateId(), name: i.name.trim(), unit: i.unit.trim() }))
       .filter((i) => i.name.length > 0)
@@ -60,7 +68,7 @@ export function MealForm({ initialMeal, onCancel, onSave }: MealFormProps) {
       servingsPerBatch,
       ingredients: cleanedIngredients,
       notes: notes.trim() || undefined,
-      sourceUrl: sourceUrl.trim() || undefined,
+      sourceUrl: safeUrl,
     })
   }
 

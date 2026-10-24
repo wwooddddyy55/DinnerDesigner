@@ -38,14 +38,6 @@
   gap: var(--space-4);
 }
 
-.desktopOnly {
-  display: block;
-}
-
-.mobileOnly {
-  display: none;
-}
-
 .mobileTabs {
   display: flex;
   gap: var(--space-2);
@@ -67,16 +59,6 @@
   background: var(--color-chip-bg);
   color: var(--color-text);
   border-color: var(--color-primary);
-}
-
-@media (max-width: 700px) {
-  .desktopOnly {
-    display: none;
-  }
-
-  .mobileOnly {
-    display: block;
-  }
 }
 
 .pickerList {
@@ -163,6 +145,11 @@
 .placedMet {
   background: var(--color-success-bg);
   color: var(--color-success);
+}
+
+.placedOver {
+  background: var(--color-warning-bg);
+  color: var(--color-danger);
 }
 
 .checkboxLabel {

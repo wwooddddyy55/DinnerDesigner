@@ -50,7 +50,7 @@ export const MAX_ASSIGNMENT_WEIGHT = 6
 export interface Person {
   id: string
   name: string
-  /** Per meal type, which of the week's 7 days (index 0=Mon..6=Sun) this
+  /** Per meal type, which of the week's 7 days (index 0=weekStartDate..6=weekStartDate+6) this
    * person is available to eat that meal type. A meal type absent from this
    * object (new person, or legacy data migrated from before this feature
    * existed) defaults to "available all 7 days" — see
@@ -79,7 +79,7 @@ export interface MealAssignment {
   id: string
   personId: string
   mealType: MealType
-  day: number // 0=Mon..6=Sun, relative to WeeklyPlan.weekStartDate
+  day: number // 0..6, relative to WeeklyPlan.weekStartDate (0 = that date, not necessarily a Monday)
   weight: number
 }
 

@@ -15,6 +15,7 @@ import { PickedMealsPanel } from '../components/PickedMealsPanel'
 import { ProgressBar } from '../components/ProgressBar'
 import { getMealTypePicked, getMealTypeTarget } from '../lib/calculations'
 import { parseCellDroppableId, parsePickedEntryDraggableId } from '../lib/dragDrop'
+import { useMediaQuery } from '../lib/useMediaQuery'
 import { useAppStore } from '../store/useAppStore'
 import { MEAL_TYPE_LABELS, proteinLabel } from '../types'
 import type { MealType, ProteinType, WeeklyPlan } from '../types'
@@ -40,6 +41,9 @@ export function PlanBuilderScreen({ plan }: PlanBuilderScreenProps) {
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null)
   const [activeMobileTab, setActiveMobileTab] = useState<'pick' | 'assign'>('pick')
   const [selectedDay, setSelectedDay] = useState(0)
+  // Same breakpoint as the rest of the app's CSS. Only the matching layout is
+  // mounted, so the picker/picked panels and grid render (and recompute) once.
+  const isMobile = useMediaQuery('(max-width: 700px)')
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -109,50 +113,67 @@ export function PlanBuilderScreen({ plan }: PlanBuilderScreenProps) {
 
   const draggingEntry = plan.plannedMeals.find((e) => e.id === draggingEntryId)
 
-  const progressBars = plan.selectedMealTypes.map((type) => (
-    <ProgressBar
-      key={type}
-      picked={getMealTypePicked(plan, type)}
-      target={getMealTypeTarget(plan, type)}
-      label={MEAL_TYPE_LABELS[type]}
+  const progressBars = (
+    <div className={`card ${styles.progressCard}`}>
+      <div className={styles.progressRow}>
+        {plan.selectedMealTypes.map((type) => (
+          <ProgressBar
+            key={type}
+            picked={getMealTypePicked(plan, type)}
+            target={getMealTypeTarget(plan, type)}
+            label={MEAL_TYPE_LABELS[type]}
+          />
+        ))}
+      </div>
+    </div>
+  )
+
+  const scope = isMobile ? 'mobile' : 'desktop'
+
+  const mealPicker = (
+    <MealPickerPanel
+      plan={plan}
+      availableMeals={availableMeals}
+      mealTypeFilter={mealTypeFilter}
+      proteinFilter={proteinFilter}
+      onToggleMealType={toggleMealType}
+      onToggleProtein={toggleProtein}
+      onClearMealTypeFilter={() => setMealTypeFilter([])}
+      onClearProteinFilter={() => setProteinFilter([])}
+      onAdd={(meal) => addPlannedMeal(plan.id, meal)}
     />
-  ))
+  )
+
+  const pickedMeals = (
+    <PickedMealsPanel
+      plan={plan}
+      scope={scope}
+      selectedEntryId={selectedEntryId}
+      onSelect={handleSelectEntry}
+      onRemove={handleRemove}
+      onSetLeftover={(entryId, isLeftover) => setEntryLeftover(plan.id, entryId, isLeftover)}
+      onSetServingsLeft={(entryId, servingsLeft) => setEntryServingsLeft(plan.id, entryId, servingsLeft)}
+    />
+  )
+
+  const cellHandlers = {
+    onClear: (entryId: string, assignmentId: string) => clearAssignment(plan.id, entryId, assignmentId),
+    onReweight: (entryId: string, assignmentId: string, weight: number) =>
+      setAssignmentWeight(plan.id, entryId, assignmentId, weight),
+  }
 
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className={styles.page}>
         <h2>Plan builder</h2>
 
-        <div className={styles.desktopOnly}>
+        {!isMobile && (
           <div className={styles.layout}>
-            <div className={styles.sidebar}>
-              <MealPickerPanel
-                plan={plan}
-                availableMeals={availableMeals}
-                mealTypeFilter={mealTypeFilter}
-                proteinFilter={proteinFilter}
-                onToggleMealType={toggleMealType}
-                onToggleProtein={toggleProtein}
-                onClearMealTypeFilter={() => setMealTypeFilter([])}
-                onClearProteinFilter={() => setProteinFilter([])}
-                onAdd={(meal) => addPlannedMeal(plan.id, meal)}
-              />
-            </div>
+            <div className={styles.sidebar}>{mealPicker}</div>
 
             <div className={styles.main}>
-              <div className={`card ${styles.progressCard}`}>
-                <div className={styles.progressRow}>{progressBars}</div>
-              </div>
-
-              <PickedMealsPanel
-                plan={plan}
-                scope="desktop"
-                selectedEntryId={selectedEntryId}
-                onSelect={handleSelectEntry}
-                onRemove={handleRemove}
-                onSetLeftover={(entryId, isLeftover) => setEntryLeftover(plan.id, entryId, isLeftover)}
-                onSetServingsLeft={(entryId, servingsLeft) => setEntryServingsLeft(plan.id, entryId, servingsLeft)}
-              />
+              {progressBars}
+              {pickedMeals}
 
               <div className={styles.assignmentSection}>
                 <h3>Assignment grid</h3>
@@ -163,86 +184,58 @@ export function PlanBuilderScreen({ plan }: PlanBuilderScreenProps) {
                   evenly by default, adjustable with the +/− stepper. Click an item's × to remove it —
                   the rest rebalance automatically.
                 </p>
-                <AssignmentGrid
-                  plan={plan}
-                  draggingEntryId={draggingEntryId}
-                  onClear={(entryId, assignmentId) => clearAssignment(plan.id, entryId, assignmentId)}
-                  onReweight={(entryId, assignmentId, weight) =>
-                    setAssignmentWeight(plan.id, entryId, assignmentId, weight)
-                  }
-                />
+                <AssignmentGrid plan={plan} draggingEntryId={draggingEntryId} {...cellHandlers} />
               </div>
             </div>
           </div>
-        </div>
+        )}
 
-        <div className={styles.mobileOnly}>
-          <div className={styles.mobileTabs}>
-            <button
-              type="button"
-              className={`${styles.mobileTab} ${activeMobileTab === 'pick' ? styles.mobileTabActive : ''}`}
-              onClick={() => setActiveMobileTab('pick')}
-            >
-              Pick meals
-            </button>
-            <button
-              type="button"
-              className={`${styles.mobileTab} ${activeMobileTab === 'assign' ? styles.mobileTabActive : ''}`}
-              onClick={() => setActiveMobileTab('assign')}
-            >
-              Assign
-            </button>
+        {isMobile && (
+          <div>
+            <div className={styles.mobileTabs}>
+              <button
+                type="button"
+                className={`${styles.mobileTab} ${activeMobileTab === 'pick' ? styles.mobileTabActive : ''}`}
+                onClick={() => setActiveMobileTab('pick')}
+              >
+                Pick meals
+              </button>
+              <button
+                type="button"
+                className={`${styles.mobileTab} ${activeMobileTab === 'assign' ? styles.mobileTabActive : ''}`}
+                onClick={() => setActiveMobileTab('assign')}
+              >
+                Assign
+              </button>
+            </div>
+
+            {activeMobileTab === 'pick' && (
+              <>
+                {mealPicker}
+                {pickedMeals}
+              </>
+            )}
+
+            {activeMobileTab === 'assign' && (
+              <>
+                {progressBars}
+                <p className={styles.emptyState}>
+                  {selectedEntryId
+                    ? 'Tap a highlighted cell to place the selected meal.'
+                    : "Tap a picked meal on the \"Pick meals\" tab to select it, then come back here and tap a cell."}
+                </p>
+                <AssignmentDayView
+                  plan={plan}
+                  day={selectedDay}
+                  onDayChange={setSelectedDay}
+                  selectedEntryId={selectedEntryId}
+                  onTapPlace={handleTapPlace}
+                  {...cellHandlers}
+                />
+              </>
+            )}
           </div>
-
-          {activeMobileTab === 'pick' && (
-            <>
-              <MealPickerPanel
-                plan={plan}
-                availableMeals={availableMeals}
-                mealTypeFilter={mealTypeFilter}
-                proteinFilter={proteinFilter}
-                onToggleMealType={toggleMealType}
-                onToggleProtein={toggleProtein}
-                onClearMealTypeFilter={() => setMealTypeFilter([])}
-                onClearProteinFilter={() => setProteinFilter([])}
-                onAdd={(meal) => addPlannedMeal(plan.id, meal)}
-              />
-              <PickedMealsPanel
-                plan={plan}
-                scope="mobile"
-                selectedEntryId={selectedEntryId}
-                onSelect={handleSelectEntry}
-                onRemove={handleRemove}
-                onSetLeftover={(entryId, isLeftover) => setEntryLeftover(plan.id, entryId, isLeftover)}
-                onSetServingsLeft={(entryId, servingsLeft) => setEntryServingsLeft(plan.id, entryId, servingsLeft)}
-              />
-            </>
-          )}
-
-          {activeMobileTab === 'assign' && (
-            <>
-              <div className={`card ${styles.progressCard}`}>
-                <div className={styles.progressRow}>{progressBars}</div>
-              </div>
-              <p className={styles.emptyState}>
-                {selectedEntryId
-                  ? 'Tap a highlighted cell to place the selected meal.'
-                  : "Tap a picked meal on the \"Pick meals\" tab to select it, then come back here and tap a cell."}
-              </p>
-              <AssignmentDayView
-                plan={plan}
-                day={selectedDay}
-                onDayChange={setSelectedDay}
-                selectedEntryId={selectedEntryId}
-                onTapPlace={handleTapPlace}
-                onClear={(entryId, assignmentId) => clearAssignment(plan.id, entryId, assignmentId)}
-                onReweight={(entryId, assignmentId, weight) =>
-                  setAssignmentWeight(plan.id, entryId, assignmentId, weight)
-                }
-              />
-            </>
-          )}
-        </div>
+        )}
       </div>
       <DragOverlay>
         {draggingEntry && (

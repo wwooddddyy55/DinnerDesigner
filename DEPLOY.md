@@ -15,8 +15,9 @@ exactly as before — purely local to that one browser.
 1. In Home Assistant: **Settings > Add-ons > Add-on Store**.
 2. Click the **⋮** menu (top right) > **Repositories**.
 3. Add: `https://github.com/wwooddddyy55/DinnerDesigner#main`
-   - The `#main` suffix is required. This repo's GitHub default branch is currently a stale branch, not
-     `main` — the bare URL would install an outdated build.
+   - Keep the `#main` suffix: the add-on build always clones `main`, and pinning the repository URL to
+     it guarantees Supervisor reads `config.yaml` from the same branch (rather than whatever the
+     GitHub default branch happens to be).
 4. Click **Add**, then refresh the store. Find **DinnerDesigner**, click **Install**, then **Start**.
 5. Check the add-on's **Log** tab for a clean git clone / `npm run build` / nginx startup.
 6. Verify both access paths:
@@ -38,6 +39,26 @@ Every time a feature/fix is ready to ship to the hosted copy:
 4. In Home Assistant: **Settings > Add-ons > DinnerDesigner**. If Supervisor hasn't already flagged an
    update, force a check via Add-on Store > ⋮ > **Check for updates**. Click **Update**.
 5. Hard-refresh the browser tab(s) you use to access the app and confirm the change is live.
+
+## Build safety: version check and same-commit build
+
+The Dockerfile clones `main` and then **fails the build** if the cloned `dinnerdesigner/config.yaml`
+isn't at the exact version Supervisor is installing (`BUILD_VERSION`). This catches a push landing
+between Supervisor's repo refresh and its build, which would otherwise ship code that doesn't match
+the version HA displays. If an install/update fails with "Cloned main is not at add-on version …",
+refresh the add-on store (**⋮ > Check for updates**) and retry.
+
+Everything in the final image — the built SPA, `server/`, `nginx.conf` and `start.sh` — is copied from
+that one cloned commit, so the frontend and the sync backend always match. The sync backend runs as
+the unprivileged `nginx` user and is restarted automatically by `start.sh` if it ever exits.
+
+## Shared data and backups
+
+The sync backend stores the shared state at `/data/state.json` inside the add-on and keeps a rolling
+set of up to 50 snapshots (at most one per minute) in `/data/backups/`. If `state.json` is ever
+unreadable at startup it's moved aside to `state.json.corrupt-<timestamp>` and the newest readable
+snapshot is used instead. See USER_GUIDE.md's **Cross-device sync** section for restoring a snapshot by
+hand, and for turning off the unauthenticated direct port if you don't need it.
 
 ## Rollback
 

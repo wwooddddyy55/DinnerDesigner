@@ -18,17 +18,25 @@ function App() {
 
   // Sync must resolve before seeding, so a fresh browser never seeds the
   // built-in starter meals only to have them immediately discarded by an
-  // incoming server pull (see src/lib/sync.ts).
+  // incoming server pull (see src/lib/sync.ts). A sync failure must never
+  // leave the app blank, so any error falls through to local-only mode.
   useEffect(() => {
     let cancelled = false
-    initialSync().then((result) => {
-      if (cancelled) return
-      if (result !== 'adopted-server') seedMealsIfNeeded()
-      startSyncLoop()
-      setSyncReady(true)
-    })
+    let stopSyncLoop: (() => void) | undefined
+    initialSync()
+      .catch((err: unknown) => {
+        console.error('Initial sync failed; continuing with local data', err)
+        return 'no-backend' as const
+      })
+      .then((result) => {
+        if (cancelled) return
+        if (result !== 'adopted-server' && result !== 'merged') seedMealsIfNeeded()
+        stopSyncLoop = startSyncLoop()
+        setSyncReady(true)
+      })
     return () => {
       cancelled = true
+      stopSyncLoop?.()
     }
   }, [seedMealsIfNeeded])
 
