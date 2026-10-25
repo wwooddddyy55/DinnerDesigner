@@ -4,9 +4,11 @@ interface ProgressBarProps {
   picked: number
   target: number
   label?: string
+  /** Optional line under the bar, e.g. which slots are still empty. */
+  detail?: string
 }
 
-export function ProgressBar({ picked, target, label }: ProgressBarProps) {
+export function ProgressBar({ picked, target, label, detail }: ProgressBarProps) {
   const pct = target > 0 ? Math.min(100, (picked / target) * 100) : picked > 0 ? 100 : 0
   const met = target > 0 && picked >= target
   const over = target > 0 && picked > target
@@ -41,12 +43,21 @@ export function ProgressBar({ picked, target, label }: ProgressBarProps) {
         </span>
         <span className={`${styles.status} ${statusClass}`}>{statusText}</span>
       </div>
-      <div className={styles.track}>
+      <div
+        className={styles.track}
+        role="progressbar"
+        aria-label={label ? `${label} servings placed` : 'Servings placed'}
+        aria-valuemin={0}
+        aria-valuemax={target}
+        aria-valuenow={Math.min(picked, target)}
+        aria-valuetext={`${picked} of ${target} servings, ${statusText}`}
+      >
         <div
           className={`${styles.fill} ${met ? styles.fillMet : ''}`}
           style={{ width: `${pct}%` }}
         />
       </div>
+      {detail && <div className={styles.detail}>{detail}</div>}
     </div>
   )
 }

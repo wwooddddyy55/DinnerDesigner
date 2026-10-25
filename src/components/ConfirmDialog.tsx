@@ -1,3 +1,5 @@
+import { useId } from 'react'
+import { useDialog } from '../lib/useDialog'
 import styles from './ConfirmDialog.module.css'
 
 interface ConfirmDialogProps {
@@ -15,13 +17,24 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
+  const dialogRef = useDialog<HTMLDivElement>(onCancel)
+  const titleId = useId()
+  const messageId = useId()
   return (
     <div className={styles.overlay}>
-      <div className={styles.box}>
-        <h3>{title}</h3>
-        <p>{message}</p>
+      <div
+        ref={dialogRef}
+        className={styles.box}
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={messageId}
+      >
+        <h3 id={titleId}>{title}</h3>
+        <p id={messageId}>{message}</p>
         <div className={styles.footer}>
-          <button type="button" className="button buttonSecondary" onClick={onCancel}>
+          {/* Cancel gets initial focus so a stray Enter never confirms a destructive action. */}
+          <button type="button" className="button buttonSecondary" onClick={onCancel} data-autofocus>
             Cancel
           </button>
           <button type="button" className="button buttonDanger" onClick={onConfirm}>

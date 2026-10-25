@@ -1,10 +1,14 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { ImportMealDialog } from '../components/ImportMealDialog'
 import { MealCard } from '../components/MealCard'
 import { MealForm } from '../components/MealForm'
+import { MealSearchBar } from '../components/MealSearchBar'
 import { ProteinFilterChips } from '../components/ProteinFilterChips'
+import { toIsoDate } from '../lib/date'
 import type { MealDraft } from '../lib/mealImport'
+import { formatLastServed, getMealServedIndex, matchesMealSearch, sortMeals } from '../lib/mealSearch'
+import type { MealSort } from '../lib/mealSearch'
 import { useAppStore } from '../store/useAppStore'
 import { MEAL_TYPE_LABELS, MEAL_TYPES } from '../types'
 import type { Meal, MealType, ProteinType } from '../types'
@@ -15,18 +19,35 @@ export function MealLibraryScreen() {
   const addMeal = useAppStore((s) => s.addMeal)
   const updateMeal = useAppStore((s) => s.updateMeal)
   const deleteMeal = useAppStore((s) => s.deleteMeal)
+  const plans = useAppStore((s) => s.plans)
 
   const [mealTypeFilter, setMealTypeFilter] = useState<MealType | 'all'>('all')
   const [proteinFilter, setProteinFilter] = useState<ProteinType[]>([])
   const [editingMeal, setEditingMeal] = useState<Meal | 'new' | null>(null)
   const [pendingDelete, setPendingDelete] = useState<Meal | null>(null)
   const [showImportDialog, setShowImportDialog] = useState(false)
+  const [query, setQuery] = useState('')
+  const [sort, setSort] = useState<MealSort>('name')
 
-  const filteredMeals = meals.filter((meal) => {
-    if (mealTypeFilter !== 'all' && !meal.mealTypes.includes(mealTypeFilter)) return false
-    if (proteinFilter.length > 0 && !proteinFilter.includes(meal.protein)) return false
-    return true
-  })
+  const served = useMemo(() => getMealServedIndex(plans), [plans])
+  const today = toIsoDate(new Date())
+  const filtersActive = mealTypeFilter !== 'all' || proteinFilter.length > 0 || query.trim().length > 0
+
+  const filteredMeals = sortMeals(
+    meals.filter((meal) => {
+      if (mealTypeFilter !== 'all' && !meal.mealTypes.includes(mealTypeFilter)) return false
+      if (proteinFilter.length > 0 && !proteinFilter.includes(meal.protein)) return false
+      return matchesMealSearch(meal, query)
+    }),
+    sort,
+    served,
+  )
+
+  function clearFilters() {
+    setMealTypeFilter('all')
+    setProteinFilter([])
+    setQuery('')
+  }
 
   function toggleProtein(protein: ProteinType) {
     setProteinFilter((prev) =>
@@ -49,6 +70,11 @@ export function MealLibraryScreen() {
     setEditingMeal({ ...draft, id: '', createdAt: '', updatedAt: '' })
   }
 
+  function handleImportedMany(drafts: MealDraft[]) {
+    setShowImportDialog(false)
+    for (const draft of drafts) addMeal(draft)
+  }
+
   return (
     <div className={styles.page}>
       <div className={styles.header}>
@@ -63,9 +89,23 @@ export function MealLibraryScreen() {
         </div>
       </div>
 
+      <p className={styles.hint}>
+        Tip: <strong>Import recipe</strong> turns a recipe link into a meal — paste it into any AI chat with the
+        prompt it gives you.
+      </p>
+
       <div className={styles.filters}>
+        <MealSearchBar
+          query={query}
+          onQueryChange={setQuery}
+          sort={sort}
+          onSortChange={setSort}
+          shownCount={filteredMeals.length}
+          totalCount={meals.length}
+        />
         <select
           className={styles.mealTypeSelect}
+          aria-label="Filter by meal type"
           value={mealTypeFilter}
           onChange={(e) => setMealTypeFilter(e.target.value as MealType | 'all')}
         >
@@ -83,14 +123,34 @@ export function MealLibraryScreen() {
         />
       </div>
 
-      {filteredMeals.length === 0 ? (
-        <p className={styles.emptyState}>No meals match these filters yet.</p>
+      {meals.length === 0 ? (
+        <div className={styles.emptyState}>
+          <p>Your library is empty. Add your first meal by hand, or import one from a recipe link.</p>
+          <div className={styles.headerActions}>
+            <button type="button" className="button" onClick={() => setEditingMeal('new')}>
+              + Add meal
+            </button>
+            <button type="button" className="button buttonSecondary" onClick={() => setShowImportDialog(true)}>
+              Import recipe
+            </button>
+          </div>
+        </div>
+      ) : filteredMeals.length === 0 ? (
+        <div className={styles.emptyState}>
+          <p>No meals match these filters.</p>
+          {filtersActive && (
+            <button type="button" className="button buttonSecondary" onClick={clearFilters}>
+              Clear filters
+            </button>
+          )}
+        </div>
       ) : (
         <div className={styles.grid}>
           {filteredMeals.map((meal) => (
             <MealCard
               key={meal.id}
               meal={meal}
+              lastServedLabel={`Last picked: ${formatLastServed(served.get(meal.id), today)}`}
               onEdit={() => setEditingMeal(meal)}
               onDelete={() => setPendingDelete(meal)}
             />
@@ -107,7 +167,11 @@ export function MealLibraryScreen() {
       )}
 
       {showImportDialog && (
-        <ImportMealDialog onCancel={() => setShowImportDialog(false)} onImported={handleImported} />
+        <ImportMealDialog
+          onCancel={() => setShowImportDialog(false)}
+          onImported={handleImported}
+          onImportedMany={handleImportedMany}
+        />
       )}
 
       {pendingDelete && (

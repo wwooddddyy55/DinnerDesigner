@@ -16,8 +16,15 @@ export function DayPlannerGrid({ plan, onToggle }: DayPlannerGridProps) {
   return (
     <div className={styles.wrapper}>
       {plan.people.map((person) => (
-        <div className={styles.personBlock} key={person.id}>
-          <h4 className={styles.personLabel}>{person.name}</h4>
+        <div
+          className={styles.personBlock}
+          key={person.id}
+          role="group"
+          aria-labelledby={`day-planner-${person.id}`}
+        >
+          <h4 className={styles.personLabel} id={`day-planner-${person.id}`}>
+            {person.name}
+          </h4>
           <div className={styles.scroll}>
             <div className={styles.grid}>
               <div className={`${styles.headerCell} ${styles.nameCell}`} />
@@ -37,6 +44,7 @@ export function DayPlannerGrid({ plan, onToggle }: DayPlannerGridProps) {
                         type="button"
                         className={`${styles.cell} ${available ? styles.cellAvailable : ''}`}
                         aria-pressed={available}
+                        aria-label={`${person.name}, ${MEAL_TYPE_LABELS[type]}, ${formatDayHeader(plan.weekStartDate, day)}: ${available ? 'available' : 'not available'}`}
                         onClick={() => onToggle(person.id, type, day, !available)}
                       >
                         {available ? 'Yes' : 'No'}

@@ -96,6 +96,18 @@
   background: var(--color-surface);
 }
 
+.unavailableText {
+  margin: 0 auto;
+  color: var(--color-text-muted);
+}
+
+.tapHint {
+  margin: 0 auto;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
 .weightStepper button:disabled {
   opacity: 0.4;
 }
@@ -113,4 +125,17 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+}
+
+/* Touchscreens: give the in-cell controls full-size tap targets. */
+@media (pointer: coarse) {
+  .weightStepper button {
+    width: 44px;
+    height: 44px;
+  }
+
+  .clearButton {
+    min-width: 44px;
+    min-height: 44px;
+  }
 }

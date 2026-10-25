@@ -19,12 +19,16 @@ interface AppState {
   updateMeal: (meal: Meal) => void
   deleteMeal: (id: string) => void
 
-  startNewWeek: (weekStartDate: string, copyFromPlanId?: string) => string
+  startNewWeek: (weekStartDate: string, copyFromPlanId?: string, options?: StartNewWeekOptions) => string
   setActivePlan: (id: string) => void
   deletePlan: (id: string) => void
+  /** Puts a previously-captured plan back (re-adding it if it was deleted),
+   * stamped as just-edited so sync treats it as this device's latest change.
+   * Used by undo. */
+  restorePlan: (plan: WeeklyPlan, makeActive?: boolean) => void
   setPlanMealTypes: (planId: string, types: MealType[]) => void
 
-  addPerson: (planId: string, name: string) => void
+  addPerson: (planId: string, name: string) => string
   updatePerson: (planId: string, person: Person) => void
   removePerson: (planId: string, personId: string) => void
 
@@ -51,6 +55,15 @@ interface AppState {
   setAssignmentWeight: (planId: string, entryId: string, assignmentId: string, weight: number) => void
 
   replaceAllData: (data: { meals: Meal[]; plans: WeeklyPlan[] }) => void
+}
+
+export interface StartNewWeekOptions {
+  /** Also clone the source plan's picked meals (as fresh, unplaced batches). */
+  copyMeals?: boolean
+  /** With `copyMeals`, also keep each batch's placements, remapped onto the
+   * copied people. Day indexes are relative to `weekStartDate`, so the same
+   * weekly pattern lands on the same weekdays-from-start. */
+  copyPlacements?: boolean
 }
 
 function touchPlan(plan: WeeklyPlan): WeeklyPlan {
@@ -94,20 +107,47 @@ export const useAppStore = create<AppState>()(
         set((state) => ({ meals: state.meals.filter((m) => m.id !== id) }))
       },
 
-      startNewWeek: (weekStartDate, copyFromPlanId) => {
+      startNewWeek: (weekStartDate, copyFromPlanId, options = {}) => {
         const now = new Date().toISOString()
         const sourcePlan = copyFromPlanId
           ? get().plans.find((p) => p.id === copyFromPlanId)
           : undefined
 
+        const personIdMap = new Map<string, string>()
+        const people = sourcePlan
+          ? sourcePlan.people.map((p) => {
+              const id = generateId()
+              personIdMap.set(p.id, id)
+              return { ...p, id }
+            })
+          : []
+
+        // A copied batch is cooked again this week, so it starts fresh: never
+        // "leftover from last week", and unplaced unless placements are copied.
+        const plannedMeals: PlannedMealEntry[] =
+          sourcePlan && options.copyMeals
+            ? sourcePlan.plannedMeals.map((entry) => {
+                const { isLeftover: _isLeftover, leftoverServingsUsed: _used, ...rest } = entry
+                return {
+                  ...rest,
+                  id: generateId(),
+                  ingredients: entry.ingredients.map((i) => ({ ...i })),
+                  assignments: options.copyPlacements
+                    ? entry.assignments.flatMap((a) => {
+                        const personId = personIdMap.get(a.personId)
+                        return personId ? [{ ...a, id: generateId(), personId }] : []
+                      })
+                    : [],
+                }
+              })
+            : []
+
         const newPlan: WeeklyPlan = {
           id: generateId(),
           weekStartDate,
-          selectedMealTypes: [],
-          people: sourcePlan
-            ? sourcePlan.people.map((p) => ({ ...p, id: generateId() }))
-            : [],
-          plannedMeals: [],
+          selectedMealTypes: sourcePlan ? [...sourcePlan.selectedMealTypes] : [],
+          people,
+          plannedMeals,
           createdAt: now,
           updatedAt: now,
         }
@@ -129,6 +169,17 @@ export const useAppStore = create<AppState>()(
         }))
       },
 
+      restorePlan: (plan, makeActive = false) => {
+        set((state) => {
+          const restored = touchPlan(plan)
+          const exists = state.plans.some((p) => p.id === plan.id)
+          return {
+            plans: exists ? state.plans.map((p) => (p.id === plan.id ? restored : p)) : [...state.plans, restored],
+            activePlanId: makeActive ? plan.id : state.activePlanId,
+          }
+        })
+      },
+
       setPlanMealTypes: (planId, types) => {
         set((state) => ({
           plans: state.plans.map((plan) =>
@@ -138,13 +189,13 @@ export const useAppStore = create<AppState>()(
       },
 
       addPerson: (planId, name) => {
+        const person: Person = { id: generateId(), name, availability: {} }
         set((state) => ({
-          plans: state.plans.map((plan) => {
-            if (plan.id !== planId) return plan
-            const person: Person = { id: generateId(), name, availability: {} }
-            return touchPlan({ ...plan, people: [...plan.people, person] })
-          }),
+          plans: state.plans.map((plan) =>
+            plan.id === planId ? touchPlan({ ...plan, people: [...plan.people, person] }) : plan,
+          ),
         }))
+        return person.id
       },
 
       updatePerson: (planId, person) => {

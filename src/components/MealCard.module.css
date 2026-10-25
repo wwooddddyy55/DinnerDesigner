@@ -39,3 +39,9 @@
   font-size: 0.85rem;
   color: var(--color-primary);
 }
+
+.lastServed {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  margin-top: var(--space-1);
+}

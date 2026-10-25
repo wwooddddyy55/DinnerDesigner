@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import type { FormEvent } from 'react'
 import { generateId } from '../lib/id'
 import { toSafeHttpUrl } from '../lib/url'
+import { useDialog } from '../lib/useDialog'
 import { MEAL_TYPE_LABELS, MEAL_TYPES, PROTEIN_TYPES } from '../types'
 import type { Ingredient, Meal, MealType, ProteinType } from '../types'
 import { IngredientListEditor } from './IngredientListEditor'
@@ -27,6 +28,8 @@ export function MealForm({ initialMeal, onCancel, onSave }: MealFormProps) {
   const [notes, setNotes] = useState(initialMeal?.notes ?? '')
   const [sourceUrl, setSourceUrl] = useState(initialMeal?.sourceUrl ?? '')
   const [error, setError] = useState<string | null>(null)
+  const dialogRef = useDialog<HTMLFormElement>(onCancel)
+  const titleId = useId()
 
   function toggleMealType(type: MealType) {
     setMealTypes((prev) =>
@@ -74,8 +77,15 @@ export function MealForm({ initialMeal, onCancel, onSave }: MealFormProps) {
 
   return (
     <div className={styles.overlay}>
-      <form className={styles.form} onSubmit={handleSubmit}>
-        <h2>{initialMeal ? 'Edit meal' : 'Add meal'}</h2>
+      <form
+        ref={dialogRef}
+        className={styles.form}
+        onSubmit={handleSubmit}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+      >
+        <h2 id={titleId}>{initialMeal ? 'Edit meal' : 'Add meal'}</h2>
 
         <div className={styles.field}>
           <label className={styles.label} htmlFor="meal-name">

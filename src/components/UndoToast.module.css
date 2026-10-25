@@ -1,0 +1,49 @@
+.region {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: var(--space-4);
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 30;
+  padding: 0 var(--space-4);
+}
+
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  max-width: 520px;
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-toast-bg);
+  color: var(--color-toast-text);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+.message {
+  flex: 1;
+  min-width: 0;
+}
+
+.undoButton {
+  border: none;
+  background: transparent;
+  color: var(--color-toast-action);
+  font-weight: 700;
+  padding: var(--space-2);
+  min-height: 44px;
+}
+
+.closeButton {
+  border: none;
+  background: transparent;
+  color: var(--color-toast-text);
+  font-size: 1.2rem;
+  line-height: 1;
+  min-width: 44px;
+  min-height: 44px;
+}

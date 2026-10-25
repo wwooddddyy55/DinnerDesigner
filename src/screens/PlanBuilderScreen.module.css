@@ -24,6 +24,21 @@
   align-items: start;
 }
 
+/* Narrow desktop windows (e.g. Home Assistant's panel beside its sidebar):
+   stack the picker above the grid instead of squeezing both side by side. */
+@media (max-width: 960px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    position: static;
+    max-height: none;
+    overflow-y: visible;
+    padding-right: 0;
+  }
+}
+
 .sidebar {
   position: sticky;
   top: var(--space-4);
@@ -147,6 +162,34 @@
   color: var(--color-success);
 }
 
+.placedNone {
+  background: var(--color-warning-bg);
+  color: var(--color-text);
+}
+
+.cardActions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.helpBox {
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+
+.helpBox summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.helpBox ul {
+  margin: var(--space-2) 0 0;
+  padding-left: var(--space-5);
+}
+
 .placedOver {
   background: var(--color-warning-bg);
   color: var(--color-danger);
@@ -202,12 +245,36 @@
   }
 
   .pickerRow > :global(.button),
-  .pickedRow > :global(.button) {
+  .pickedRow > .cardActions {
     grid-area: action;
     width: 100%;
     justify-content: center;
   }
 
+  .cardActions {
+    flex-direction: row;
+  }
+
+  .cardActions > :global(.button) {
+    flex: 1;
+  }
+
+  .leftoverServingsInput {
+    width: 4.5em;
+    min-height: 44px;
+    padding: var(--space-2);
+  }
+}
+
+.placingHint {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-chip-bg);
+  color: var(--color-text);
+}
+
+@media (pointer: coarse) {
   .leftoverServingsInput {
     width: 4.5em;
     min-height: 44px;

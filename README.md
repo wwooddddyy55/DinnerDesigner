@@ -40,20 +40,28 @@ so every device pointed at it stays in sync.
    planner to mark which of the week's 7 days each person is eating each
    meal type (defaults to every day; untick days they're eating out). Each
    person's target for a meal type is the number of days they're marked
-   available.
+   available. A new week can copy last week's people, meal types, and
+   (optionally) its meals and their placements.
 2. **Meal Library** — your reusable collection of meals: a name, which meal
    type(s) it fits, a protein tag, how many servings one batch makes (e.g.
    Lasagna = 8), and an ingredient list. A handful of starter meals are
-   seeded in on first run — add, edit, or delete freely from here.
+   seeded in on first run — add, edit, or delete freely from here, search
+   and sort it (e.g. "haven't had in a while"), or import recipes — one or
+   several at a time — via any AI chat.
 3. **Plan Builder** — filter the library by meal type and protein and add
    meals (each add is one cooked batch; the same meal can be added more
    than once). Then place each batch's servings onto people's day/meal
-   cells — drag-and-drop on desktop, tap-to-place on mobile. Progress bars
+   cells — drag-and-drop or click-to-place (keyboard too) on desktop,
+   tap-to-place on mobile. Progress bars
    count only *placed* servings, so one batch can be spread across several
    days as leftovers, and up to 4 items can share one cell.
 4. **Shopping List** — ingredients from every meal picked for the week are
-   combined automatically (matching by ingredient name + unit), so you get
-   one list to shop from.
+   combined automatically (matching by ingredient name, converting g/kg,
+   ml/l and tsp/tbsp/cup), so you get one list to shop from. Batches
+   already cooked last week are left off, and the list can be copied as
+   plain text.
+
+Removing things is undoable, and there's a light/dark theme toggle.
 
 Your data can be exported to / imported from a JSON file from the Weekly
 Setup screen — handy for backups, moving to another browser, or (down the
@@ -66,7 +74,7 @@ line) feeding a Home Assistant dashboard from the exported file.
   shopping list that already used it.
 - People and their day-by-day availability are stored **per week**, not as
   a global roster, since who's eating and when varies week to week.
-  Starting a new week offers a "copy people from last week" shortcut.
+  Starting a new week offers a "copy from last week" shortcut.
 
 ## Roadmap ideas
 

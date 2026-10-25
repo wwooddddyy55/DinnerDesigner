@@ -17,17 +17,46 @@ function isProteinType(value: unknown): value is ProteinType {
  * using the app's import prompt template) into a `MealDraft` ready for `MealForm`/`addMeal`.
  * Throws a descriptive `Error` for any structural problem so the UI can show it inline. */
 export function parseMealDraft(text: string): MealDraft {
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(text)
-  } catch {
-    throw new Error('That doesn\'t look like valid JSON.')
-  }
-
+  const parsed = parseJson(text)
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
     throw new Error('Expected a single JSON object describing one meal.')
   }
-  const raw = parsed as Record<string, unknown>
+  return parseMealObject(parsed as Record<string, unknown>)
+}
+
+/** Like `parseMealDraft`, but also accepts a JSON array of meal objects (the
+ * import prompt asks for one when several recipes are pasted at once). An
+ * error in any meal names its 1-based position so the user can find it. */
+export function parseMealDrafts(text: string): MealDraft[] {
+  const parsed = parseJson(text)
+  if (!Array.isArray(parsed)) {
+    if (typeof parsed !== 'object' || parsed === null) {
+      throw new Error('Expected a JSON object describing one meal, or an array of them.')
+    }
+    return [parseMealObject(parsed as Record<string, unknown>)]
+  }
+  if (parsed.length === 0) throw new Error('That array has no meals in it.')
+  return parsed.map((item, index) => {
+    if (typeof item !== 'object' || item === null || Array.isArray(item)) {
+      throw new Error(`Meal ${index + 1}: expected a JSON object.`)
+    }
+    try {
+      return parseMealObject(item as Record<string, unknown>)
+    } catch (err) {
+      throw new Error(`Meal ${index + 1}: ${err instanceof Error ? err.message : String(err)}`)
+    }
+  })
+}
+
+function parseJson(text: string): unknown {
+  try {
+    return JSON.parse(text)
+  } catch {
+    throw new Error('That doesn\'t look like valid JSON.')
+  }
+}
+
+function parseMealObject(raw: Record<string, unknown>): MealDraft {
 
   if (typeof raw.name !== 'string' || raw.name.trim().length === 0) {
     throw new Error('Missing or invalid "name".')
@@ -98,7 +127,7 @@ export function parseMealDraft(text: string): MealDraft {
   return draft
 }
 
-export const MEAL_IMPORT_PROMPT_TEMPLATE = `Here's a recipe [link or pasted text]. Extract it into this exact JSON shape and reply with ONLY the JSON, no other text:
+export const MEAL_IMPORT_PROMPT_TEMPLATE = `Here's a recipe [link or pasted text]. Extract it into this exact JSON shape and reply with ONLY the JSON, no other text. If I give you more than one recipe, reply with a JSON array containing one of these objects per recipe:
 
 {
   "name": string,

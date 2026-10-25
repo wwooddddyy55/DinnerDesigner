@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseMealDraft } from './mealImport'
+import { parseMealDraft, parseMealDrafts } from './mealImport'
 
 function validDraftJson(overrides: Record<string, unknown> = {}): string {
   return JSON.stringify({
@@ -67,5 +67,26 @@ describe('parseMealDraft', () => {
     expect(() =>
       parseMealDraft(validDraftJson({ ingredients: [{ name: 'Salt', unit: 'tsp' }] })),
     ).toThrow('quantity')
+  })
+})
+
+describe('parseMealDrafts', () => {
+  const one = { name: 'Chili', mealTypes: ['dinner'], protein: 'Beef', servingsPerBatch: 6 }
+  const two = { name: 'Oats', mealTypes: ['breakfast'], protein: 'Vegetarian', servingsPerBatch: 2 }
+
+  it('accepts a single object', () => {
+    expect(parseMealDrafts(JSON.stringify(one)).map((d) => d.name)).toEqual(['Chili'])
+  })
+
+  it('accepts an array of meals', () => {
+    expect(parseMealDrafts(JSON.stringify([one, two])).map((d) => d.name)).toEqual(['Chili', 'Oats'])
+  })
+
+  it('names the position of an invalid meal in an array', () => {
+    expect(() => parseMealDrafts(JSON.stringify([one, { ...two, protein: 'Tofu' }]))).toThrow(/^Meal 2: /)
+  })
+
+  it('rejects an empty array', () => {
+    expect(() => parseMealDrafts('[]')).toThrow('no meals')
   })
 })

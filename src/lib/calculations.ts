@@ -1,3 +1,5 @@
+import { fromBaseUnit, toBaseUnit } from './units'
+import type { UnitFamily } from './units'
 import { DAYS_PER_WEEK, MAX_CELL_OCCUPANTS } from '../types'
 import type { MealAssignment, MealType, PlannedMealEntry, Person, WeeklyPlan } from '../types'
 
@@ -36,6 +38,20 @@ export function getMealTypePicked(plan: WeeklyPlan, mealType: MealType): number 
     }
   }
   return cells.size
+}
+
+/** Every (person, day) slot for a meal type where the person is available
+ * but nothing has been placed yet, in day then people order — what's still
+ * left to fill for that meal type's progress bar. */
+export function getOpenCells(plan: WeeklyPlan, mealType: MealType): { person: Person; day: number }[] {
+  const open: { person: Person; day: number }[] = []
+  for (let day = 0; day < DAYS_PER_WEEK; day++) {
+    for (const person of plan.people) {
+      if (!isCellAvailable(person, mealType, day)) continue
+      if (findCellAssignments(plan, person.id, day, mealType).length === 0) open.push({ person, day })
+    }
+  }
+  return open
 }
 
 type CellOccupant = { entry: PlannedMealEntry; assignment: MealAssignment }
@@ -202,27 +218,74 @@ export interface ShoppingListLine {
   name: string
   unit: string
   quantity: number
+  /** Names of the picked meals this line's ingredient comes from (distinct, A–Z). */
+  sources: string[]
+}
+
+export interface ShoppingListOptions {
+  /** Include entries marked "already cooked last week" (`isLeftover`). Off by
+   * default: that batch's groceries were bought last week. */
+  includeLeftovers?: boolean
+}
+
+/** Picked entries left off the shopping list by default because they were
+ * cooked in a previous week (see `ShoppingListOptions.includeLeftovers`). */
+export function getLeftoverEntries(plan: WeeklyPlan): PlannedMealEntry[] {
+  return plan.plannedMeals.filter((e) => e.isLeftover)
+}
+
+function roundQuantity(n: number): number {
+  return Math.round(n * 100) / 100
 }
 
 /** Aggregates ingredients across every planned meal in the week, summing
  * quantities for ingredients that share the same name (case-insensitive,
- * trimmed) and unit. Same name with a different unit stays a separate line. */
-export function getShoppingList(plan: WeeklyPlan): ShoppingListLine[] {
-  const map = new Map<string, ShoppingListLine>()
+ * trimmed) and unit. Units that convert into each other (g/kg, ml/l,
+ * tsp/tbsp/cup — see `lib/units.ts`) are combined and shown in a readable
+ * unit; any other unit only combines with the exact same unit, so the same
+ * name with an unrelated unit stays a separate line. Each batch's
+ * ingredients count once no matter how its servings are placed. Batches
+ * marked as cooked last week are skipped unless `includeLeftovers`. */
+export function getShoppingList(plan: WeeklyPlan, options: ShoppingListOptions = {}): ShoppingListLine[] {
+  const map = new Map<
+    string,
+    { key: string; name: string; unit: string; quantity: number; family: UnitFamily | null; sources: Set<string> }
+  >()
 
   for (const entry of plan.plannedMeals) {
+    if (entry.isLeftover && !options.includeLeftovers) continue
     for (const ingredient of entry.ingredients) {
       const name = ingredient.name.trim()
       const unit = ingredient.unit.trim()
-      const key = `${name.toLowerCase()}|${unit.toLowerCase()}`
+      const base = toBaseUnit(ingredient.quantity, unit)
+      const key = base ? `${name.toLowerCase()}|${base.family}` : `${name.toLowerCase()}|${unit.toLowerCase()}`
+      const quantity = base ? base.baseQuantity : ingredient.quantity
       const existing = map.get(key)
       if (existing) {
-        existing.quantity += ingredient.quantity
+        existing.quantity += quantity
+        existing.sources.add(entry.name)
       } else {
-        map.set(key, { key, name, unit, quantity: ingredient.quantity })
+        map.set(key, { key, name, unit, quantity, family: base?.family ?? null, sources: new Set([entry.name]) })
       }
     }
   }
 
-  return [...map.values()].sort((a, b) => a.name.localeCompare(b.name))
+  return [...map.values()]
+    .map(({ key, name, unit, quantity, family, sources }) => {
+      const display = family ? fromBaseUnit(family, quantity) : { quantity, unit }
+      return {
+        key,
+        name,
+        unit: display.unit,
+        quantity: roundQuantity(display.quantity),
+        sources: [...sources].sort((a, b) => a.localeCompare(b)),
+      }
+    })
+    .sort((a, b) => a.name.localeCompare(b.name))
+}
+
+/** Plain-text version of a shopping list for pasting into a notes app,
+ * message, or Home Assistant's shopping list: one "Name — qty unit" per line. */
+export function formatShoppingListText(lines: ShoppingListLine[]): string {
+  return lines.map((l) => `${l.name} — ${l.quantity}${l.unit ? ` ${l.unit}` : ''}`).join('\n')
 }
