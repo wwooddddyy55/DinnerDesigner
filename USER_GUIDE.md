@@ -18,6 +18,12 @@ all and everything stays local to that one browser, exactly as before.
   add-on's panel, so pick **dark** here if you use a dark dashboard. The choice is remembered per
   browser.
 - Every dialog closes with **Escape**, and keyboard focus stays inside it while it's open.
+- When a screen has nothing to show yet because something is missing elsewhere, it has a button
+  that takes you there: **Go to Weekly Setup** (Plan Builder, with no meal types chosen), **Open
+  Meal Library** (the meal picker, when no library meal fits the week's meal types), and **Go to
+  Plan Builder** (Shopping List, with no meals picked).
+- Day names, dates (e.g. **Mon 9/1** in the US, **Mo. 1.9.** in Germany) and quantities (**2.5** or
+  **2,5**) follow your device's language and region settings.
 - **Undo:** removing a picked meal or a person, taking a meal off a slot with **×**, deleting a
   week, and importing data each show an **Undo** bar at the bottom of the screen for about 8
   seconds. Only the most recent action can be undone, and only in the tab where you did it.
@@ -47,10 +53,10 @@ that opens the app syncs with it:
 - Other devices pick up those changes when you switch back to their tab or window, reopen the app, or
   within about 30 seconds while the app is open and visible.
 - **Edits on two devices at once are merged, not overwritten.** If another device saved changes
-  since this one last synced, the two sets of changes are combined per meal and per week: a meal or
-  week changed on only one device keeps that device's version (including deletions), and one changed
-  on both keeps whichever was edited most recently. A meal or week deleted on one device but edited
-  on the other is kept.
+  since this one last synced, the two sets of changes are combined per meal, per week and per
+  "always have" staple: a meal or week changed on only one device keeps that device's version
+  (including deletions), and one changed on both keeps whichever was edited most recently. A meal
+  or week deleted on one device but edited on the other is kept.
 - **Which week you're viewing stays per device.** Switching weeks on one device doesn't move
   anyone else's view; if the week you're on is deleted elsewhere, this device falls back to another
   week (or to Weekly Setup if none are left).
@@ -110,13 +116,15 @@ example, local development) has no backend to sync with and behaves exactly as i
   tracked meal type starts at a target of 7 until you toggle days off (e.g. if they're eating out
   some nights). On a phone the whole week fits across the screen (short meal-type labels, the day
   and date stacked in each column header).
-- **Export data** downloads your full meal library and plan history as a JSON file. **Import data**
+- **Export data** downloads your full meal library, plan history and "always have" staples as a
+  JSON file. **Import data**
   loads a previously exported file, replacing everything currently in the app — after a confirmation
   that shows how many meals and weeks you have now and how many the file contains, and with
   **Undo** available right afterwards (until anything is changed after the import — undoing then
   would erase that change too, so the Undo bar disappears). Importing an export
   from an older version of the app is supported — old-format planned-meal entries are converted
-  automatically. Damaged or hand-edited files are repaired where possible (records too broken to use
+  automatically (a file from before staples existed imports with none). Damaged or hand-edited
+  files are repaired where possible (records too broken to use
   are skipped, invalid fields reset to defaults) rather than breaking the app; a file exported from a
   *newer* version of the app is refused.
 - **Delete week**: with a week selected, click **Delete week** next to the picker to permanently
@@ -318,6 +326,12 @@ checkable list:
 - Under each item, **for …** names the meals it's needed for.
 - Batches marked **Already cooked last week** are left off, with a note naming them; tick **Include
   their ingredients anyway** to add them back.
+- **Always have** on an item marks it as something your household keeps on hand (salt, oil…): it's
+  left off the list, the ticked count and the copied text from then on, for every week and on every
+  synced device. An **Undo** bar appears right afterwards. The **Always have (N)** section under the
+  list shows every such staple (with this week's quantity, when a picked meal uses it); tap **Put
+  back** when you run out and it's back on the list. Names match regardless of capitals or extra
+  spaces, so "Olive oil" also catches "olive  OIL".
 - The header shows how many items you've ticked (with a progress bar); **Hide ticked** hides the ones
   you've already got. The header stays pinned at the top while you scroll the list, and rows are
   sized for one-handed ticking on a phone.

@@ -134,6 +134,31 @@ export interface WeeklyPlan {
   updatedAt: string
 }
 
+/** An ingredient the household always has on hand (salt, oil…), left off the
+ * shopping list. Household-wide, not per week, and synced like meals: `id` is
+ * `stapleKey(name)`, so the same name added on two devices is one record and
+ * the sync merge (by id, newest `updatedAt` wins) never duplicates it. */
+export interface Staple {
+  id: string
+  /** As first entered, for display. */
+  name: string
+  updatedAt: string
+}
+
+/** Shopping-list ingredient names match staples case-insensitively, ignoring
+ * surrounding and repeated whitespace. */
+export function stapleKey(name: string): string {
+  return name.trim().replace(/\s+/g, ' ').toLowerCase()
+}
+
+/** Everything that's shared between devices and exported: the meal library,
+ * every week's plan, and the household's staples. */
+export interface AppData {
+  meals: Meal[]
+  plans: WeeklyPlan[]
+  staples: Staple[]
+}
+
 export function proteinLabel(protein: ProteinType, customLabel?: string): string {
   if (protein === 'Other' && customLabel && customLabel.trim().length > 0) {
     return customLabel.trim()

@@ -3,21 +3,17 @@ import type { ChangeEvent } from 'react'
 import { Collapsible } from '../components/Collapsible'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { DayPlannerGrid } from '../components/DayPlannerGrid'
-import type { View } from '../components/NavBar'
 import { PersonRow } from '../components/PersonRow'
 import { getMealTypeTarget } from '../lib/calculations'
 import { addDays, toIsoDate, formatWeekLabel } from '../lib/date'
 import { buildExport, downloadExport, parseImport } from '../lib/exportImport'
+import { useNavigate } from '../lib/navigation'
 import { openSection } from '../lib/openSection'
 import { dismissUndo, offerUndo } from '../lib/undo'
 import { useAppStore } from '../store/useAppStore'
 import { MEAL_TYPES, MEAL_TYPE_LABELS } from '../types'
-import type { Meal, MealType, WeeklyPlan } from '../types'
+import type { AppData, MealType, WeeklyPlan } from '../types'
 import styles from './WeeklyPlanSetupScreen.module.css'
-
-interface WeeklyPlanSetupScreenProps {
-  onNavigate: (view: View) => void
-}
 
 function sortByWeekDesc(plans: WeeklyPlan[]): WeeklyPlan[] {
   return [...plans].sort((a, b) => b.weekStartDate.localeCompare(a.weekStartDate))
@@ -30,9 +26,11 @@ function defaultNewWeekDate(plans: WeeklyPlan[]): string {
   return mostRecent ? addDays(mostRecent.weekStartDate, 7) : toIsoDate(new Date())
 }
 
-export function WeeklyPlanSetupScreen({ onNavigate }: WeeklyPlanSetupScreenProps) {
+export function WeeklyPlanSetupScreen() {
+  const onNavigate = useNavigate()
   const plans = useAppStore((s) => s.plans)
   const meals = useAppStore((s) => s.meals)
+  const staples = useAppStore((s) => s.staples)
   const activePlanId = useAppStore((s) => s.activePlanId)
   const startNewWeek = useAppStore((s) => s.startNewWeek)
   const setActivePlan = useAppStore((s) => s.setActivePlan)
@@ -50,7 +48,7 @@ export function WeeklyPlanSetupScreen({ onNavigate }: WeeklyPlanSetupScreenProps
   const [copyMeals, setCopyMeals] = useState(false)
   const [copyPlacements, setCopyPlacements] = useState(false)
   const [importError, setImportError] = useState<string | null>(null)
-  const [pendingImport, setPendingImport] = useState<{ meals: Meal[]; plans: WeeklyPlan[] } | null>(null)
+  const [pendingImport, setPendingImport] = useState<AppData | null>(null)
   const [pendingDeletePlan, setPendingDeletePlan] = useState<WeeklyPlan | null>(null)
   const [focusPersonId, setFocusPersonId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -72,7 +70,7 @@ export function WeeklyPlanSetupScreen({ onNavigate }: WeeklyPlanSetupScreenProps
   }
 
   function handleExport() {
-    downloadExport(buildExport(meals, plans))
+    downloadExport(buildExport({ meals, plans, staples }))
   }
 
   function handleImportClick() {
@@ -94,7 +92,7 @@ export function WeeklyPlanSetupScreen({ onNavigate }: WeeklyPlanSetupScreenProps
 
   function confirmImport() {
     if (!pendingImport) return
-    const previous = { meals, plans }
+    const previous = { meals, plans, staples }
     replaceAllData(pendingImport)
     const imported = useAppStore.getState()
     setPendingImport(null)
@@ -104,7 +102,7 @@ export function WeeklyPlanSetupScreen({ onNavigate }: WeeklyPlanSetupScreenProps
     // since (here, or synced in from another device), so the offer is
     // withdrawn as soon as the imported data changes.
     const unsubscribe = useAppStore.subscribe((s) => {
-      if (s.meals === imported.meals && s.plans === imported.plans) return
+      if (s.meals === imported.meals && s.plans === imported.plans && s.staples === imported.staples) return
       unsubscribe()
       dismissUndo(offerId)
     })

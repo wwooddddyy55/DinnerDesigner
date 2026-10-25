@@ -4,6 +4,7 @@ import { MealTypeFilterChips } from './MealTypeFilterChips'
 import { ProteinFilterChips } from './ProteinFilterChips'
 import { formatLastServed } from '../lib/mealSearch'
 import type { MealServedInfo, MealSort } from '../lib/mealSearch'
+import { useNavigate } from '../lib/navigation'
 import { MEAL_TYPE_LABELS, proteinLabel } from '../types'
 import type { Meal, MealType, ProteinType, WeeklyPlan } from '../types'
 import styles from '../screens/PlanBuilderScreen.module.css'
@@ -51,6 +52,7 @@ export function MealPickerPanel({
   onAdd,
   compact = false,
 }: MealPickerPanelProps) {
+  const navigate = useNavigate()
   const [showFilters, setShowFilters] = useState(false)
   const activeFilters = mealTypeFilter.length + proteinFilter.length
   const filtersVisible = !compact || showFilters
@@ -88,9 +90,12 @@ export function MealPickerPanel({
       )}
       <div className={styles.pickerList}>
         {eligibleCount === 0 && (
-          <p className={styles.emptyState}>
-            No library meals fit this week's meal types yet. Add some on the Meal Library tab.
-          </p>
+          <div className={styles.emptyState}>
+            <p>No library meals fit this week's meal types yet.</p>
+            <button type="button" className="button buttonSecondary" onClick={() => navigate('library')}>
+              Open Meal Library
+            </button>
+          </div>
         )}
         {eligibleCount > 0 && availableMeals.length === 0 && (
           <div className={styles.emptyState}>

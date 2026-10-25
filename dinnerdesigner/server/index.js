@@ -17,7 +17,7 @@ const MAX_BACKUPS = 50
 const MIN_BACKUP_INTERVAL_MS = 60 * 1000
 const MAX_BODY_BYTES = 10 * 1024 * 1024
 
-const EMPTY_STATE = { meals: [], plans: [], activePlanId: null, hasSeededMeals: false, updatedAt: 0 }
+const EMPTY_STATE = { meals: [], plans: [], staples: [], activePlanId: null, hasSeededMeals: false, updatedAt: 0 }
 
 fs.mkdirSync(DATA_DIR, { recursive: true })
 fs.mkdirSync(BACKUP_DIR, { recursive: true })
@@ -191,6 +191,11 @@ function validatePayload(parsed) {
       return 'every meal and plan must be an object with a string id'
     }
   }
+  if (parsed.staples !== undefined) {
+    if (!Array.isArray(parsed.staples) || !parsed.staples.every((item) => isPlainObject(item) && typeof item.id === 'string')) {
+      return 'staples must be an array of objects with a string id'
+    }
+  }
   if (parsed.baseUpdatedAt !== undefined && typeof parsed.baseUpdatedAt !== 'number') {
     return 'baseUpdatedAt must be a number'
   }
@@ -234,6 +239,9 @@ async function handlePut(req, res) {
         schemaVersion: typeof parsed.schemaVersion === 'number' ? parsed.schemaVersion : undefined,
         meals: parsed.meals,
         plans: parsed.plans,
+        // A device still running a cached pre-staples build sends no
+        // `staples`; keep the stored ones rather than wiping them.
+        staples: parsed.staples !== undefined ? parsed.staples : currentState.staples || [],
         activePlanId: typeof parsed.activePlanId === 'string' ? parsed.activePlanId : null,
         hasSeededMeals: Boolean(parsed.hasSeededMeals),
         updatedAt,

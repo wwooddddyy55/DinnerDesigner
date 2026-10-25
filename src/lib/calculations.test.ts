@@ -316,9 +316,14 @@ describe('isEntryFullyPlaced / formatServingCount', () => {
   })
 
   it('formats fractional serving counts trimmed to 2 decimals with no trailing zeros', () => {
-    expect(formatServingCount(2)).toBe('2')
-    expect(formatServingCount(2.5)).toBe('2.5')
-    expect(formatServingCount(1 / 3)).toBe('0.33')
+    expect(formatServingCount(2, 'en-US')).toBe('2')
+    expect(formatServingCount(2.5, 'en-US')).toBe('2.5')
+    expect(formatServingCount(1 / 3, 'en-US')).toBe('0.33')
+  })
+
+  it("uses the locale's decimal separator and never groups thousands", () => {
+    expect(formatServingCount(2.5, 'de-DE')).toBe('2,5')
+    expect(formatServingCount(1500, 'en-US')).toBe('1500')
   })
 })
 

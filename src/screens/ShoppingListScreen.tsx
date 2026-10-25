@@ -1,9 +1,20 @@
 import { useState } from 'react'
 import type { FocusEvent } from 'react'
-import { formatShoppingListText, getLeftoverEntries, getShoppingList } from '../lib/calculations'
+import {
+  formatQuantity,
+  formatShoppingListText,
+  getLeftoverEntries,
+  getShoppingList,
+  splitStaples,
+} from '../lib/calculations'
+import type { ShoppingListLine } from '../lib/calculations'
 import { copyToClipboard } from '../lib/clipboard'
 import { formatWeekLabel } from '../lib/date'
+import { useNavigate } from '../lib/navigation'
+import { offerUndo } from '../lib/undo'
 import { useWakeLock } from '../lib/useWakeLock'
+import { useAppStore } from '../store/useAppStore'
+import { stapleKey } from '../types'
 import type { WeeklyPlan } from '../types'
 import styles from './ShoppingListScreen.module.css'
 
@@ -11,13 +22,23 @@ interface ShoppingListScreenProps {
   plan: WeeklyPlan
 }
 
+function lineText(line: ShoppingListLine): string {
+  return `${formatQuantity(line.quantity)}${line.unit ? ` ${line.unit}` : ''}`
+}
+
 export function ShoppingListScreen({ plan }: ShoppingListScreenProps) {
+  const navigate = useNavigate()
+  const staples = useAppStore((s) => s.staples)
+  const addStaple = useAppStore((s) => s.addStaple)
+  const removeStaple = useAppStore((s) => s.removeStaple)
   const [checked, setChecked] = useState<Set<string>>(new Set())
   const [hideChecked, setHideChecked] = useState(false)
   const [includeLeftovers, setIncludeLeftovers] = useState(false)
   const [copied, setCopied] = useState(false)
   const [copyFallback, setCopyFallback] = useState<string | null>(null)
-  const lines = getShoppingList(plan, { includeLeftovers })
+  const allLines = getShoppingList(plan, { includeLeftovers })
+  const { toBuy: lines, staples: stapleLines } = splitStaples(allLines, staples)
+  const stapleLineById = new Map(stapleLines.map((l) => [stapleKey(l.name), l]))
   const leftoverEntries = getLeftoverEntries(plan)
   const checkedCount = lines.filter((l) => checked.has(l.key)).length
   const visibleLines = hideChecked ? lines.filter((l) => !checked.has(l.key)) : lines
@@ -31,6 +52,16 @@ export function ShoppingListScreen({ plan }: ShoppingListScreenProps) {
       else next.add(key)
       return next
     })
+  }
+
+  function handleAlwaysHave(line: ShoppingListLine) {
+    addStaple(line.name)
+    offerUndo(`${line.name} is left off the list from now on.`, () => removeStaple(stapleKey(line.name)))
+  }
+
+  function handlePutBack(id: string, name: string) {
+    removeStaple(id)
+    offerUndo(`${name} is back on the list.`, () => addStaple(name))
   }
 
   async function handleCopy() {
@@ -73,11 +104,20 @@ export function ShoppingListScreen({ plan }: ShoppingListScreenProps) {
       )}
 
       {lines.length === 0 ? (
-        <p className={styles.emptyState}>
-          {plan.plannedMeals.length === 0
-            ? 'No meals picked yet. Add meals in the Plan Builder to generate a shopping list.'
-            : 'Nothing to buy — the picked meals have no ingredients listed (or were all cooked last week).'}
-        </p>
+        plan.plannedMeals.length === 0 ? (
+          <div className={styles.emptyState}>
+            <p>No meals picked yet. Add meals in the Plan Builder to generate a shopping list.</p>
+            <button type="button" className="button" onClick={() => navigate('plan')}>
+              Go to Plan Builder
+            </button>
+          </div>
+        ) : (
+          <p className={styles.emptyState}>
+            {stapleLines.length > 0
+              ? 'Nothing to buy — everything this week is something you always have.'
+              : 'Nothing to buy — the picked meals have no ingredients listed (or were all cooked last week).'}
+          </p>
+        )
       ) : (
         <>
           <div className={`stickyBar ${styles.stickyTools}`}>
@@ -125,21 +165,61 @@ export function ShoppingListScreen({ plan }: ShoppingListScreenProps) {
           <div className={styles.list}>
             {visibleLines.length === 0 && <p className={styles.emptyState}>Everything's ticked off. Nice!</p>}
             {visibleLines.map((line) => (
-              <label className={`card ${styles.row}`} key={line.key}>
-                <input type="checkbox" checked={checked.has(line.key)} onChange={() => toggle(line.key)} />
-                <span className={styles.itemText}>
-                  <span className={`${styles.itemLine} ${checked.has(line.key) ? styles.checked : ''}`}>
-                    <span className={styles.itemName}>{line.name}</span>
-                    <span className={styles.quantity}>
-                      {line.quantity} {line.unit}
+              <div className={`card ${styles.row}`} key={line.key}>
+                <label className={styles.rowLabel}>
+                  <input type="checkbox" checked={checked.has(line.key)} onChange={() => toggle(line.key)} />
+                  <span className={styles.itemText}>
+                    <span className={`${styles.itemLine} ${checked.has(line.key) ? styles.checked : ''}`}>
+                      <span className={styles.itemName}>{line.name}</span>
+                      <span className={styles.quantity}>{lineText(line)}</span>
                     </span>
+                    <span className={styles.sources}>for {line.sources.join(', ')}</span>
                   </span>
-                  <span className={styles.sources}>for {line.sources.join(', ')}</span>
-                </span>
-              </label>
+                </label>
+                <button
+                  type="button"
+                  className={`button buttonSecondary ${styles.alwaysHave}`}
+                  onClick={() => handleAlwaysHave(line)}
+                  aria-label={`Always have ${line.name}: leave it off the list from now on`}
+                >
+                  Always have
+                </button>
+              </div>
             ))}
           </div>
         </>
+      )}
+
+      {staples.length > 0 && (
+        <details className={`card ${styles.staples}`}>
+          <summary>
+            Always have ({staples.length}){stapleLines.length > 0 && ` · ${stapleLines.length} used this week`}
+          </summary>
+          <p className={styles.staplesHint}>
+            Left off the list and the copied text for every week. Put one back when you run out.
+          </p>
+          <ul className={styles.stapleList}>
+            {staples.map((staple) => {
+              const line = stapleLineById.get(staple.id)
+              return (
+                <li key={staple.id} className={styles.stapleRow}>
+                  <span className={styles.itemText}>
+                    <span className={styles.itemName}>{staple.name}</span>
+                    {line && <span className={styles.sources}>{lineText(line)} this week</span>}
+                  </span>
+                  <button
+                    type="button"
+                    className="button buttonSecondary"
+                    onClick={() => handlePutBack(staple.id, staple.name)}
+                    aria-label={`Put ${staple.name} back on the list`}
+                  >
+                    Put back
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        </details>
       )}
     </div>
   )

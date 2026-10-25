@@ -1,6 +1,6 @@
 import { Fragment } from 'react'
 import { isCellAvailable } from '../lib/calculations'
-import { formatDayHeader } from '../lib/date'
+import { formatDayHeader, formatDayHeaderParts } from '../lib/date'
 import { MEAL_TYPE_LABELS } from '../types'
 import type { MealType, WeeklyPlan } from '../types'
 import styles from './DayPlannerGrid.module.css'
@@ -35,18 +35,16 @@ export function DayPlannerGrid({ plan, onToggle }: DayPlannerGridProps) {
           <div className={styles.scroll}>
             <div className={styles.grid}>
               <div className={`${styles.headerCell} ${styles.nameCell}`} />
-              {DAYS.map((day) => (
-                <div className={styles.headerCell} key={day}>
-                  {/* "Mon 9/1", stacked onto two lines on phones. */}
-                  {formatDayHeader(plan.weekStartDate, day)
-                    .split(' ')
-                    .map((part, i) => (
-                      <span key={i} className={styles.headerPart}>
-                        {part}
-                      </span>
-                    ))}
-                </div>
-              ))}
+              {DAYS.map((day) => {
+                // "Mon 9/1", stacked onto two lines on phones.
+                const { weekday, date } = formatDayHeaderParts(plan.weekStartDate, day)
+                return (
+                  <div className={styles.headerCell} key={day}>
+                    <span className={styles.headerPart}>{weekday}</span>
+                    <span className={styles.headerPart}>{date}</span>
+                  </div>
+                )
+              })}
               {plan.selectedMealTypes.map((type) => (
                 <Fragment key={type}>
                   <div className={styles.nameCell}>

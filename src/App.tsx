@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { NavBar } from './components/NavBar'
 import { UndoToast } from './components/UndoToast'
-import type { View } from './components/NavBar'
+import { NavigateContext } from './lib/navigation'
+import type { View } from './lib/navigation'
 import { HistoryScreen } from './screens/HistoryScreen'
 import { MealLibraryScreen } from './screens/MealLibraryScreen'
 import { PlanBuilderScreen } from './screens/PlanBuilderScreen'
@@ -54,15 +55,15 @@ function App() {
   }
 
   return (
-    <div>
+    <NavigateContext.Provider value={setView}>
       <NavBar current={shownView} onNavigate={setView} hasActivePlan={Boolean(activePlanId)} />
-      {shownView === 'setup' && <WeeklyPlanSetupScreen onNavigate={setView} />}
+      {shownView === 'setup' && <WeeklyPlanSetupScreen />}
       {shownView === 'library' && <MealLibraryScreen />}
       {shownView === 'plan' && activePlan && <PlanBuilderScreen key={activePlan.id} plan={activePlan} />}
       {shownView === 'shopping-list' && activePlan && <ShoppingListScreen plan={activePlan} />}
       {shownView === 'history' && <HistoryScreen />}
       <UndoToast />
-    </div>
+    </NavigateContext.Provider>
   )
 }
 
