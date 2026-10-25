@@ -30,14 +30,19 @@ export function subscribeUndo(listener: () => void): () => void {
   return () => listeners.delete(listener)
 }
 
-export function offerUndo(message: string, restore: () => void): void {
+/** Returns the offer's id, for withdrawing just this offer via `dismissUndo`. */
+export function offerUndo(message: string, restore: () => void): number {
   if (hideTimer) clearTimeout(hideTimer)
   current = { id: nextId++, message, restore }
-  hideTimer = setTimeout(dismissUndo, UNDO_TIMEOUT_MS)
+  hideTimer = setTimeout(() => dismissUndo(), UNDO_TIMEOUT_MS)
   emit()
+  return current.id
 }
 
-export function dismissUndo(): void {
+/** Hides the current offer — or, given an `id`, only if that offer is still
+ * the current one (so a newer offer isn't withdrawn by mistake). */
+export function dismissUndo(id?: number): void {
+  if (id !== undefined && current?.id !== id) return
   if (hideTimer) clearTimeout(hideTimer)
   hideTimer = undefined
   if (!current) return

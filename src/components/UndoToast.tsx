@@ -14,7 +14,7 @@ export function UndoToast() {
           <button type="button" className={styles.undoButton} onClick={runUndo}>
             Undo
           </button>
-          <button type="button" className={styles.closeButton} onClick={dismissUndo} aria-label="Dismiss">
+          <button type="button" className={styles.closeButton} onClick={() => dismissUndo()} aria-label="Dismiss">
             &times;
           </button>
         </div>

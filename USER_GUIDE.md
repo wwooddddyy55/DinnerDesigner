@@ -37,6 +37,9 @@ that opens the app syncs with it:
   week changed on only one device keeps that device's version (including deletions), and one changed
   on both keeps whichever was edited most recently. A meal or week deleted on one device but edited
   on the other is kept.
+- **Which week you're viewing stays per device.** Switching weeks on one device doesn't move
+  anyone else's view; if the week you're on is deleted elsewhere, this device falls back to another
+  week (or to Weekly Setup if none are left).
 - If the add-on is unreachable (or rejects a save), the app keeps working from that browser's own
   local copy and keeps retrying. Unsaved changes are remembered even if you close the tab or reload,
   and are merged in once the add-on is reachable again.
@@ -89,7 +92,8 @@ example, local development) has no backend to sync with and behaves exactly as i
 - **Export data** downloads your full meal library and plan history as a JSON file. **Import data**
   loads a previously exported file, replacing everything currently in the app — after a confirmation
   that shows how many meals and weeks you have now and how many the file contains, and with
-  **Undo** available right afterwards. Importing an export
+  **Undo** available right afterwards (until anything is changed after the import — undoing then
+  would erase that change too, so the Undo bar disappears). Importing an export
   from an older version of the app is supported — old-format planned-meal entries are converted
   automatically. Damaged or hand-edited files are repaired where possible (records too broken to use
   are skipped, invalid fields reset to defaults) rather than breaking the app; a file exported from a
@@ -206,7 +210,8 @@ per person) below the picked-meals list:
   The drag handle is keyboard-draggable too (focus it, press Space, move with the arrow keys, press
   Space to drop). A **How placing works** summary sits above the grid.
 - **Lunch/dinner is always placeable either way.** If your plan tracks both lunch and dinner, any
-  meal you pick that's eligible for lunch *or* dinner can be dragged onto cells of either type — even
+  meal you pick that's eligible for lunch *or* dinner (including ones picked before you started
+  tracking both) can be dragged onto cells of either type — even
   if it's tagged for only one of them in the library. A dinner-only meal can still be placed onto a
   lunch cell as leftovers; you don't need to re-tag it in the library first.
 - A cell only accepts a drop if that person is marked **available** for that day/meal type in the

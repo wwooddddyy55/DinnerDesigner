@@ -41,6 +41,10 @@ function App() {
     }
   }, [seedMealsIfNeeded])
 
+  // The active week can disappear under these screens (deleted here or on
+  // another device); fall back to Setup instead of rendering nothing.
+  const shownView: View = (view === 'plan' || view === 'shopping-list') && !activePlan ? 'setup' : view
+
   if (!syncReady) {
     return (
       <p className="loadingState" role="status">
@@ -51,12 +55,12 @@ function App() {
 
   return (
     <div>
-      <NavBar current={view} onNavigate={setView} hasActivePlan={Boolean(activePlanId)} />
-      {view === 'setup' && <WeeklyPlanSetupScreen onNavigate={setView} />}
-      {view === 'library' && <MealLibraryScreen />}
-      {view === 'plan' && activePlan && <PlanBuilderScreen plan={activePlan} />}
-      {view === 'shopping-list' && activePlan && <ShoppingListScreen plan={activePlan} />}
-      {view === 'history' && <HistoryScreen />}
+      <NavBar current={shownView} onNavigate={setView} hasActivePlan={Boolean(activePlanId)} />
+      {shownView === 'setup' && <WeeklyPlanSetupScreen onNavigate={setView} />}
+      {shownView === 'library' && <MealLibraryScreen />}
+      {shownView === 'plan' && activePlan && <PlanBuilderScreen plan={activePlan} />}
+      {shownView === 'shopping-list' && activePlan && <ShoppingListScreen plan={activePlan} />}
+      {shownView === 'history' && <HistoryScreen />}
       <UndoToast />
     </div>
   )
