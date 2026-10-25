@@ -66,7 +66,12 @@ export function ImportMealDialog({ onCancel, onImported, onImportedMany }: Impor
   return (
     <div className={styles.overlay}>
       <div ref={dialogRef} className={styles.box} role="dialog" aria-modal="true" aria-labelledby={titleId}>
-        <h2 id={titleId}>Import recipe</h2>
+        <div className={styles.sheetHeader}>
+          <h2 id={titleId}>Import recipe</h2>
+          <button type="button" className={styles.closeButton} onClick={onCancel} aria-label="Close">
+            &times;
+          </button>
+        </div>
         {drafts ? (
           <>
             <p className={styles.hint}>

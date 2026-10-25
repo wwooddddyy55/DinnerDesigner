@@ -45,3 +45,14 @@
   color: var(--color-text-muted);
   margin-top: var(--space-1);
 }
+
+/* Keep Delete apart from Edit (and smaller), so a slip doesn't hit it. */
+.deleteButton {
+  margin-left: auto;
+}
+
+@media (max-width: 700px) {
+  .actions > :global(.button):first-child {
+    flex: 1;
+  }
+}

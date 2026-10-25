@@ -29,6 +29,17 @@
   --space-5: 24px;
   --space-6: 32px;
 
+  /* Layout primitives shared by every screen: page gutter (tighter on
+     phones), the iOS home-indicator inset (non-zero once the viewport uses
+     viewport-fit=cover), and one stacking order — sticky bars < undo toast
+     < dialogs < confirm dialogs, so the toast never covers a dialog's buttons. */
+  --page-pad: var(--space-5);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --z-sticky: 5;
+  --z-toast: 8;
+  --z-dialog: 10;
+  --z-confirm: 20;
+
   color-scheme: light;
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
@@ -158,8 +169,10 @@ input[type='radio'] {
   transition: background-color 0.15s ease;
 }
 
-.button:hover {
-  background: var(--color-primary-hover);
+@media (hover: hover) {
+  .button:hover {
+    background: var(--color-primary-hover);
+  }
 }
 
 .button:disabled {
@@ -173,8 +186,10 @@ input[type='radio'] {
   border-color: var(--color-border);
 }
 
-.buttonSecondary:hover {
-  background: var(--color-chip-bg);
+@media (hover: hover) {
+  .buttonSecondary:hover {
+    background: var(--color-chip-bg);
+  }
 }
 
 .buttonDanger {
@@ -183,14 +198,47 @@ input[type='radio'] {
   border-color: var(--color-danger);
 }
 
-.buttonDanger:hover {
-  background: var(--color-danger-bg);
+@media (hover: hover) {
+  .buttonDanger:hover {
+    background: var(--color-danger-bg);
+  }
 }
 
-@media (max-width: 700px) {
+/* Thumb-sized buttons on phones, and on any touchscreen (tablets, the HA
+   panel on a tablet) regardless of width. */
+@media (max-width: 700px), (pointer: coarse) {
   .button {
     min-height: 44px;
     justify-content: center;
+  }
+}
+
+@media (max-width: 700px) {
+  :root {
+    --page-pad: var(--space-3);
+  }
+}
+
+/* A bar that stays pinned to the top of the page while its section scrolls. */
+.stickyBar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  background: var(--color-bg);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
   }
 }
 

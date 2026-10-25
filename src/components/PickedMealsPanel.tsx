@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useDraggable } from '@dnd-kit/core'
 import { CAPACITY_EPSILON, formatServingCount, getEntryConsumedServings } from '../lib/calculations'
 import { pickedEntryDraggableId } from '../lib/dragDrop'
+import { NumberInput } from './NumberInput'
 import { proteinLabel } from '../types'
 import type { WeeklyPlan } from '../types'
 import styles from '../screens/PlanBuilderScreen.module.css'
@@ -15,29 +16,6 @@ interface PickedMealCardProps {
   onRemove: (entryId: string) => void
   onSetLeftover: (entryId: string, isLeftover: boolean) => void
   onSetServingsLeft: (entryId: string, servingsLeft: number) => void
-}
-
-/** "Servings left" number input that keeps its own text while being edited,
- * so clearing the field to retype doesn't snap it to 0 — a value is only
- * committed when it parses as a number (the store still clamps it), and the
- * field shows the stored value again once it loses focus. */
-function ServingsLeftInput({ value, max, onCommit }: { value: number; max: number; onCommit: (n: number) => void }) {
-  const [draft, setDraft] = useState<string | null>(null)
-  return (
-    <input
-      type="number"
-      className={styles.leftoverServingsInput}
-      min={0}
-      max={max}
-      value={draft ?? String(value)}
-      onChange={(e) => {
-        setDraft(e.target.value)
-        const n = Number(e.target.value)
-        if (e.target.value.trim() !== '' && Number.isFinite(n)) onCommit(n)
-      }}
-      onBlur={() => setDraft(null)}
-    />
-  )
 }
 
 function PickedMealCard({
@@ -58,6 +36,14 @@ function PickedMealCard({
   const overCapacity = placed > entry.totalServings + CAPACITY_EPSILON
   const servingsLeft = entry.totalServings - (entry.leftoverServingsUsed ?? 0)
   const needsPlacing = placed <= (entry.leftoverServingsUsed ?? 0) + CAPACITY_EPSILON && !fullyPlaced
+  // On phones placing is tap-only (the day view has no drop targets), so the
+  // drag handle is left out there; and the rarely-used carry-over controls sit
+  // behind an Options toggle unless they're already in use.
+  const isMobile = scope === 'mobile'
+  const [showOptions, setShowOptions] = useState(false)
+  const optionsVisible = !isMobile || showOptions || Boolean(entry.isLeftover)
+  const overCapacityHint =
+    'More servings are placed than this batch makes — usually after removing something from a shared cell. Remove a placement or use the +/− stepper to fix it.'
 
   return (
     <div
@@ -65,16 +51,18 @@ function PickedMealCard({
       className={`card ${styles.pickedRow} ${isDragging ? styles.pickedRowDragging : ''} ${selected ? styles.pickedRowSelected : ''}`}
       onClick={() => onSelect(entry.id)}
     >
-      <button
-        type="button"
-        className={styles.dragHandle}
-        aria-label={`Drag ${entry.name} to place it`}
-        onClick={(e) => e.stopPropagation()}
-        {...attributes}
-        {...listeners}
-      >
-        ⠿
-      </button>
+      {!isMobile && (
+        <button
+          type="button"
+          className={styles.dragHandle}
+          aria-label={`Drag ${entry.name} to place it`}
+          onClick={(e) => e.stopPropagation()}
+          {...attributes}
+          {...listeners}
+        >
+          ⠿
+        </button>
+      )}
       <div className={styles.pickerInfo}>
         <strong>{entry.name}</strong>
         <span className={styles.pickerMeta}>
@@ -82,29 +70,44 @@ function PickedMealCard({
         </span>
         <span
           className={`badge ${overCapacity ? styles.placedOver : fullyPlaced ? styles.placedMet : needsPlacing ? styles.placedNone : ''}`}
-          title={
-            overCapacity
-              ? 'More servings are placed than this batch makes — usually after removing something from a shared cell. Remove a placement or use the +/− stepper to fix it.'
-              : undefined
-          }
+          title={overCapacity ? overCapacityHint : undefined}
         >
           {formatServingCount(placed)}/{entry.totalServings} placed
           {overCapacity ? ' — over batch size' : needsPlacing ? ' — needs placing' : fullyPlaced ? ' ✓' : ''}
         </span>
-        <label className={styles.checkboxLabel} onClick={(e) => e.stopPropagation()}>
-          <input
-            type="checkbox"
-            checked={entry.isLeftover ?? false}
-            onChange={(e) => onSetLeftover(entry.id, e.target.checked)}
-          />
-          Already cooked last week (carry-over)
-        </label>
+        {overCapacity && isMobile && <span className={styles.overCapacityHint}>{overCapacityHint}</span>}
+        {!optionsVisible && (
+          <button
+            type="button"
+            className={styles.optionsToggle}
+            aria-expanded={false}
+            onClick={(e) => {
+              e.stopPropagation()
+              setShowOptions(true)
+            }}
+          >
+            Options…
+          </button>
+        )}
+        {optionsVisible && (
+          <label className={styles.checkboxLabel} onClick={(e) => e.stopPropagation()}>
+            <input
+              type="checkbox"
+              checked={entry.isLeftover ?? false}
+              onChange={(e) => onSetLeftover(entry.id, e.target.checked)}
+            />
+            Already cooked last week (carry-over)
+          </label>
+        )}
         {entry.isLeftover && (
           <label className={styles.leftoverServingsLabel} onClick={(e) => e.stopPropagation()}>
             Servings left
-            <ServingsLeftInput
-              value={servingsLeft}
+            <NumberInput
+              className={styles.leftoverServingsInput}
+              inputMode="numeric"
+              min={0}
               max={entry.totalServings}
+              value={servingsLeft}
               onCommit={(n) => onSetServingsLeft(entry.id, n)}
             />
             / {entry.totalServings}

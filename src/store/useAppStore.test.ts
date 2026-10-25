@@ -41,6 +41,14 @@ beforeEach(() => {
 })
 
 describe('assignMealToCell', () => {
+  it('reports whether the placement landed', () => {
+    seedPlan({ id: 'plan-1', people: [makePerson('p1')], plannedMeals: [makeEntry({ id: 'e1', totalServings: 1 })] })
+
+    expect(useAppStore.getState().assignMealToCell('plan-1', 'e1', 'p1', 'dinner', 0)).toBe(true)
+    // The batch's only serving is used up.
+    expect(useAppStore.getState().assignMealToCell('plan-1', 'e1', 'p1', 'dinner', 1)).toBe(false)
+  })
+
   it('rejects a 5th occupant of an already-full cell', () => {
     const occupants = ['e1', 'e2', 'e3', 'e4'].map((id) =>
       makeEntry({ id, assignments: [{ id: `a-${id}`, personId: 'p1', mealType: 'dinner', day: 0, weight: 1 }] }),

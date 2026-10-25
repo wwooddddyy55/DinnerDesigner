@@ -56,7 +56,12 @@ export function MealCard({ meal, onEdit, onDelete, actionSlot, lastServedLabel }
           </button>
         )}
         {onDelete && (
-          <button type="button" className="button buttonDanger" onClick={onDelete} aria-label={`Delete ${meal.name}`}>
+          <button
+            type="button"
+            className={`button buttonDanger ${styles.deleteButton}`}
+            onClick={onDelete}
+            aria-label={`Delete ${meal.name}`}
+          >
             Delete
           </button>
         )}

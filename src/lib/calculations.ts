@@ -199,18 +199,65 @@ export function canSetAssignmentWeight(plan: WeeklyPlan, assignmentId: string, p
 /** Whether `entry` (currently being dragged, or tap-selected) can be placed
  * into a cell already holding `occupants` for `mealType` — shared by the
  * drag-and-drop grid and the tap-to-place day view so both interaction modes
- * agree on cell eligibility. Advisory/UX-only: the store's `assignMealToCell`
- * re-checks independently (and also enforces the servings-capacity invariant,
- * which this does not), so a stale or optimistic `true` here can never let an
- * invalid placement actually land. */
+ * agree on cell eligibility. Given `plan` (and occupants carrying their
+ * assignments, as `findCellAssignments` returns), it also checks that the
+ * batch has enough servings left for the share this cell would take, so a
+ * fully placed selection stops highlighting cells. Advisory/UX-only: the
+ * store's `assignMealToCell` re-checks independently, so a stale or
+ * optimistic `true` here can never let an invalid placement actually land. */
 export function canPlaceEntryInCell(
   entry: PlannedMealEntry | undefined,
   mealType: MealType,
-  occupants: { entry: PlannedMealEntry }[],
+  occupants: { entry: PlannedMealEntry; assignment?: MealAssignment }[],
+  plan?: WeeklyPlan,
 ): boolean {
   if (!entry || !entry.mealTypes.includes(mealType)) return false
   if (occupants.length >= MAX_CELL_OCCUPANTS) return false
-  return !occupants.some((o) => o.entry.id === entry.id)
+  if (occupants.some((o) => o.entry.id === entry.id)) return false
+  if (!plan) return true
+  // Mirrors assignMealToCell: a newcomer gets weight 1 of the cell.
+  const existingWeightSum = occupants.reduce((sum, o) => sum + (o.assignment?.weight ?? 1), 0)
+  const newFraction = 1 / (existingWeightSum + 1)
+  return getEntryConsumedServings(plan, entry) + newFraction <= entry.totalServings + CAPACITY_EPSILON
+}
+
+/** Servings of a batch not yet placed (never negative). */
+export function getEntryRemaining(plan: WeeklyPlan, entry: PlannedMealEntry): number {
+  return Math.max(0, entry.totalServings - getEntryConsumedServings(plan, entry))
+}
+
+export interface DayStatus {
+  /** Cells someone is available for, across every person and tracked meal type. */
+  available: number
+  /** Available cells with nothing placed yet. */
+  open: number
+  /** Cells `entry` could be placed into right now (0 without an entry). */
+  eligible: number
+}
+
+/** Per-day summary for the mobile day switcher: how many slots are still
+ * empty, and (with an entry selected) how many it could still go into. */
+export function getDayStatus(plan: WeeklyPlan, day: number, entry?: PlannedMealEntry): DayStatus {
+  const status: DayStatus = { available: 0, open: 0, eligible: 0 }
+  for (const person of plan.people) {
+    for (const mealType of plan.selectedMealTypes) {
+      if (!isCellAvailable(person, mealType, day)) continue
+      status.available++
+      const occupants = findCellAssignments(plan, person.id, day, mealType)
+      if (occupants.length === 0) status.open++
+      if (entry && canPlaceEntryInCell(entry, mealType, occupants, plan)) status.eligible++
+    }
+  }
+  return status
+}
+
+/** Index (0–6) of today within the plan week, or `undefined` when today falls
+ * outside it. `today` is an ISO date, injectable for tests. */
+export function getTodayDayIndex(weekStartDate: string, today: string): number | undefined {
+  const [y1, m1, d1] = weekStartDate.split('-').map(Number)
+  const [y2, m2, d2] = today.split('-').map(Number)
+  const diff = Math.round((Date.UTC(y2, m2 - 1, d2) - Date.UTC(y1, m1 - 1, d1)) / 86_400_000)
+  return diff >= 0 && diff < DAYS_PER_WEEK ? diff : undefined
 }
 
 export interface ShoppingListLine {

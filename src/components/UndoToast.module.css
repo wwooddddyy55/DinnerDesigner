@@ -2,11 +2,13 @@
   position: fixed;
   left: 0;
   right: 0;
-  bottom: var(--space-4);
+  /* Clear of the iPhone home indicator. */
+  bottom: calc(var(--safe-bottom) + var(--space-4));
   display: flex;
   justify-content: center;
   pointer-events: none;
-  z-index: 30;
+  /* Below dialogs, so it can never cover a dialog's buttons. */
+  z-index: var(--z-toast);
   padding: 0 var(--space-4);
 }
 
@@ -36,10 +38,15 @@
   font-weight: 700;
   padding: var(--space-2);
   min-height: 44px;
+  min-width: 64px;
 }
 
 .closeButton {
+  /* Kept apart from Undo so a slip doesn't dismiss the only way back. */
+  margin-left: var(--space-2);
   border: none;
+  border-left: 1px solid currentColor;
+  border-radius: 0;
   background: transparent;
   color: var(--color-toast-text);
   font-size: 1.2rem;

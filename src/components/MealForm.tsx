@@ -6,6 +6,7 @@ import { useDialog } from '../lib/useDialog'
 import { MEAL_TYPE_LABELS, MEAL_TYPES, PROTEIN_TYPES } from '../types'
 import type { Ingredient, Meal, MealType, ProteinType } from '../types'
 import { IngredientListEditor } from './IngredientListEditor'
+import { NumberInput } from './NumberInput'
 import styles from './MealForm.module.css'
 
 interface MealFormProps {
@@ -85,7 +86,12 @@ export function MealForm({ initialMeal, onCancel, onSave }: MealFormProps) {
         aria-modal="true"
         aria-labelledby={titleId}
       >
-        <h2 id={titleId}>{initialMeal ? 'Edit meal' : 'Add meal'}</h2>
+        <div className={styles.sheetHeader}>
+          <h2 id={titleId}>{initialMeal ? 'Edit meal' : 'Add meal'}</h2>
+          <button type="button" className={styles.closeButton} onClick={onCancel} aria-label="Close without saving">
+            &times;
+          </button>
+        </div>
 
         <div className={styles.field}>
           <label className={styles.label} htmlFor="meal-name">
@@ -95,6 +101,10 @@ export function MealForm({ initialMeal, onCancel, onSave }: MealFormProps) {
             id="meal-name"
             className={styles.input}
             type="text"
+            autoCapitalize="words"
+            autoComplete="off"
+            enterKeyHint="next"
+            data-autofocus
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g. Lasagna"
@@ -155,13 +165,14 @@ export function MealForm({ initialMeal, onCancel, onSave }: MealFormProps) {
           <label className={styles.label} htmlFor="meal-servings">
             Servings per batch
           </label>
-          <input
+          <NumberInput
             id="meal-servings"
             className={styles.input}
-            type="number"
+            inputMode="numeric"
             min={1}
+            enterKeyHint="next"
             value={servingsPerBatch}
-            onChange={(e) => setServingsPerBatch(Number(e.target.value))}
+            onCommit={setServingsPerBatch}
           />
         </div>
 
@@ -178,6 +189,8 @@ export function MealForm({ initialMeal, onCancel, onSave }: MealFormProps) {
             id="meal-notes"
             className={styles.input}
             type="text"
+            autoCapitalize="sentences"
+            enterKeyHint="next"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
           />
@@ -191,6 +204,10 @@ export function MealForm({ initialMeal, onCancel, onSave }: MealFormProps) {
             id="meal-source-url"
             className={styles.input}
             type="url"
+            inputMode="url"
+            autoCapitalize="none"
+            autoCorrect="off"
+            enterKeyHint="done"
             value={sourceUrl}
             onChange={(e) => setSourceUrl(e.target.value)}
             placeholder="https://..."

@@ -14,13 +14,22 @@ import { AssignmentGrid } from '../components/AssignmentGrid'
 import { MealPickerPanel } from '../components/MealPickerPanel'
 import { PickedMealsPanel } from '../components/PickedMealsPanel'
 import { ProgressBar } from '../components/ProgressBar'
-import { getMealTypePicked, getMealTypeTarget, getOpenCells } from '../lib/calculations'
-import { formatDayHeader } from '../lib/date'
+import {
+  CAPACITY_EPSILON,
+  formatServingCount,
+  getEntryConsumedServings,
+  getEntryRemaining,
+  getMealTypePicked,
+  getMealTypeTarget,
+  getOpenCells,
+  getTodayDayIndex,
+} from '../lib/calculations'
+import { formatDayHeader, toIsoDate } from '../lib/date'
 import { parseCellDroppableId, parsePickedEntryDraggableId } from '../lib/dragDrop'
 import { getMealServedIndex, matchesMealSearch, sortMeals } from '../lib/mealSearch'
 import type { MealSort } from '../lib/mealSearch'
 import { offerUndo } from '../lib/undo'
-import { useMediaQuery } from '../lib/useMediaQuery'
+import { TOUCH_LAYOUT_QUERY, useMediaQuery } from '../lib/useMediaQuery'
 import { useAppStore } from '../store/useAppStore'
 import { MEAL_TYPE_LABELS, proteinLabel } from '../types'
 import type { MealType, ProteinType, WeeklyPlan } from '../types'
@@ -38,6 +47,15 @@ function describeOpenCells(plan: WeeklyPlan, mealType: MealType): string | undef
     .map(({ person, day }) => `${multiplePeople ? `${person.name} ` : ''}${formatDayHeader(plan.weekStartDate, day)}`)
   const more = open.length - listed.length
   return `Still empty: ${listed.join(', ')}${more > 0 ? ` and ${more} more` : ''}`
+}
+
+/** A short buzz on phones that support it (Android; iOS ignores it). */
+function buzz(pattern: number | number[]) {
+  try {
+    navigator.vibrate?.(pattern)
+  } catch {
+    // Some webviews throw instead of ignoring it.
+  }
 }
 
 interface PlanBuilderScreenProps {
@@ -69,10 +87,20 @@ export function PlanBuilderScreen({ plan }: PlanBuilderScreenProps) {
   const [draggingEntryId, setDraggingEntryId] = useState<string | null>(null)
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null)
   const [activeMobileTab, setActiveMobileTab] = useState<'pick' | 'assign'>('pick')
-  const [selectedDay, setSelectedDay] = useState(0)
-  // Same breakpoint as the rest of the app's CSS. Only the matching layout is
-  // mounted, so the picker/picked panels and grid render (and recompute) once.
-  const isMobile = useMediaQuery('(max-width: 700px)')
+  // Open on today when this week is the current one.
+  const [selectedDay, setSelectedDay] = useState(
+    () => getTodayDayIndex(plan.weekStartDate, toIsoDate(new Date())) ?? 0,
+  )
+  const [showProgressDetail, setShowProgressDetail] = useState(false)
+  // Phone Pick tab: the library picker is open while picking, and folded
+  // away (picked meals first) for a week that already has picks.
+  const [showPicker, setShowPicker] = useState(plan.plannedMeals.length === 0)
+  // Screen-reader announcement of the last placement (or why it failed).
+  const [announcement, setAnnouncement] = useState('')
+  // Phones, and touchscreens too short for the grid (landscape) — the same
+  // query the layout's CSS uses. Only the matching layout is mounted, so the
+  // picker/picked panels and grid render (and recompute) once.
+  const isMobile = useMediaQuery(TOUCH_LAYOUT_QUERY)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -98,17 +126,50 @@ export function PlanBuilderScreen({ plan }: PlanBuilderScreenProps) {
   }
 
   function handleSelectEntry(entryId: string) {
-    setSelectedEntryId((prev) => {
-      const next = prev === entryId ? null : entryId
-      if (next) setActiveMobileTab('assign')
-      return next
-    })
+    if (selectedEntryId === entryId) {
+      setSelectedEntryId(null)
+      return
+    }
+    const entry = plan.plannedMeals.find((e) => e.id === entryId)
+    // A fully placed batch has nothing left to place.
+    if (!entry || getEntryRemaining(plan, entry) <= CAPACITY_EPSILON) return
+    setSelectedEntryId(entryId)
+    setActiveMobileTab('assign')
   }
 
   function handleTapPlace(personId: string, mealType: MealType, day: number) {
     if (!selectedEntryId) return
-    assignMealToCell(plan.id, selectedEntryId, personId, mealType, day)
-    setSelectedEntryId(null)
+    const entry = plan.plannedMeals.find((e) => e.id === selectedEntryId)
+    const person = plan.people.find((p) => p.id === personId)
+    const where = `${person?.name ?? ''}, ${MEAL_TYPE_LABELS[mealType]} ${formatDayHeader(plan.weekStartDate, day)}`
+    if (!assignMealToCell(plan.id, selectedEntryId, personId, mealType, day)) {
+      // Rejected (no servings left, cell full…): keep the selection so the
+      // user can pick another cell.
+      buzz([30, 40, 30])
+      setAnnouncement(`Couldn't place ${entry?.name ?? 'that meal'} on ${where}.`)
+      return
+    }
+    buzz(15)
+    setAnnouncement(`Placed ${entry?.name ?? 'meal'} on ${where}.`)
+    // Stay selected while the batch has servings left, so the next serving
+    // is one more tap rather than a trip back to the card.
+    const updated = useAppStore.getState().plans.find((p) => p.id === plan.id)
+    const updatedEntry = updated?.plannedMeals.find((e) => e.id === selectedEntryId)
+    if (!updated || !updatedEntry || getEntryRemaining(updated, updatedEntry) <= CAPACITY_EPSILON) {
+      setSelectedEntryId(null)
+    }
+  }
+
+  function handleClear(entryId: string, assignmentId: string) {
+    const entry = plan.plannedMeals.find((e) => e.id === entryId)
+    const assignment = entry?.assignments.find((a) => a.id === assignmentId)
+    clearAssignment(plan.id, entryId, assignmentId)
+    if (!entry || !assignment) return
+    offerUndo(`Took ${entry.name} off ${formatDayHeader(plan.weekStartDate, assignment.day)}.`, () => {
+      // Placed again through the store, so its capacity/availability checks
+      // still apply if things changed in the meantime.
+      assignMealToCell(plan.id, entryId, assignment.personId, assignment.mealType, assignment.day)
+    })
   }
 
   function handleRemove(entryId: string) {
@@ -161,6 +222,9 @@ export function PlanBuilderScreen({ plan }: PlanBuilderScreenProps) {
   }
 
   const draggingEntry = plan.plannedMeals.find((e) => e.id === draggingEntryId)
+  const selectedEntry = plan.plannedMeals.find((e) => e.id === selectedEntryId)
+  // Picked meals with servings still to place, for the Assign tab's chips.
+  const unplacedEntries = plan.plannedMeals.filter((e) => getEntryRemaining(plan, e) > CAPACITY_EPSILON)
 
   const progressBars = (
     <div className={`card ${styles.progressCard}`}>
@@ -202,6 +266,7 @@ export function PlanBuilderScreen({ plan }: PlanBuilderScreenProps) {
       onClearMealTypeFilter={() => setMealTypeFilter([])}
       onClearProteinFilter={() => setProteinFilter([])}
       onAdd={(meal) => addPlannedMeal(plan.id, meal)}
+      compact={isMobile}
     />
   )
 
@@ -218,7 +283,7 @@ export function PlanBuilderScreen({ plan }: PlanBuilderScreenProps) {
   )
 
   const cellHandlers = {
-    onClear: (entryId: string, assignmentId: string) => clearAssignment(plan.id, entryId, assignmentId),
+    onClear: handleClear,
     onReweight: (entryId: string, assignmentId: string, weight: number) =>
       setAssignmentWeight(plan.id, entryId, assignmentId, weight),
   }
@@ -243,7 +308,7 @@ export function PlanBuilderScreen({ plan }: PlanBuilderScreenProps) {
                   <ul>
                     <li>
                       Drag a picked meal's ⠿ handle onto a person's day/meal cell — or click <strong>Place</strong>{' '}
-                      on the card, then click a highlighted cell. Each placement uses one serving of that batch.
+                      on the card, then click highlighted cells. Each placement uses one serving of that batch.
                     </li>
                     <li>
                       Place the same batch on several cells to eat it as leftovers across the week (lunch and
@@ -255,10 +320,11 @@ export function PlanBuilderScreen({ plan }: PlanBuilderScreenProps) {
                     </li>
                   </ul>
                 </details>
-                {selectedEntryId && (
+                {selectedEntry && (
                   <p className={styles.placingHint} role="status">
-                    Placing <strong>{plan.plannedMeals.find((e) => e.id === selectedEntryId)?.name}</strong> — click a
-                    highlighted cell, or click <strong>Choosing cell…</strong> on its card to cancel.
+                    Placing <strong>{selectedEntry.name}</strong> — click highlighted cells to place its servings (it
+                    stays selected until the batch is used up), or click <strong>Choosing cell…</strong> on its card to
+                    stop.
                   </p>
                 )}
                 <AssignmentGrid
@@ -275,38 +341,132 @@ export function PlanBuilderScreen({ plan }: PlanBuilderScreenProps) {
 
         {isMobile && (
           <div>
-            <div className={styles.mobileTabs}>
-              <button
-                type="button"
-                className={`${styles.mobileTab} ${activeMobileTab === 'pick' ? styles.mobileTabActive : ''}`}
-                onClick={() => setActiveMobileTab('pick')}
-              >
-                Pick meals
-              </button>
-              <button
-                type="button"
-                className={`${styles.mobileTab} ${activeMobileTab === 'assign' ? styles.mobileTabActive : ''}`}
-                onClick={() => setActiveMobileTab('assign')}
-              >
-                Assign
-              </button>
+            <div className={`stickyBar ${styles.mobileHeader}`}>
+              <div className={styles.mobileTabs}>
+                <button
+                  type="button"
+                  className={`${styles.mobileTab} ${activeMobileTab === 'pick' ? styles.mobileTabActive : ''}`}
+                  aria-pressed={activeMobileTab === 'pick'}
+                  onClick={() => setActiveMobileTab('pick')}
+                >
+                  Pick meals
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.mobileTab} ${activeMobileTab === 'assign' ? styles.mobileTabActive : ''}`}
+                  aria-pressed={activeMobileTab === 'assign'}
+                  onClick={() => setActiveMobileTab('assign')}
+                >
+                  Assign
+                  {unplacedEntries.length > 0 && (
+                    <span className={styles.tabCount} aria-label={`, ${unplacedEntries.length} to place`}>
+                      {unplacedEntries.length}
+                    </span>
+                  )}
+                </button>
+              </div>
+
+              {activeMobileTab === 'assign' && (
+                <>
+                  <button
+                    type="button"
+                    className={styles.progressSummary}
+                    aria-expanded={showProgressDetail}
+                    onClick={() => setShowProgressDetail((v) => !v)}
+                  >
+                    <span>
+                      {plan.selectedMealTypes
+                        .map(
+                          (type) =>
+                            `${MEAL_TYPE_LABELS[type]} ${getMealTypePicked(plan, type)}/${getMealTypeTarget(plan, type)}`,
+                        )
+                        .join(' · ')}
+                    </span>
+                    <span aria-hidden="true">{showProgressDetail ? '▴' : '▾'}</span>
+                  </button>
+
+                  {selectedEntry ? (
+                    <div className={styles.placingStrip}>
+                      <span className={styles.placingText}>
+                        Placing <strong>{selectedEntry.name}</strong> ·{' '}
+                        {formatServingCount(getEntryConsumedServings(plan, selectedEntry))}/
+                        {selectedEntry.totalServings} placed
+                      </span>
+                      <button type="button" className="button buttonSecondary" onClick={() => setSelectedEntryId(null)}>
+                        Done
+                      </button>
+                    </div>
+                  ) : (
+                    <p className={styles.placingHint}>
+                      {unplacedEntries.length > 0
+                        ? 'Tap a meal below, then tap highlighted slots to place its servings.'
+                        : plan.plannedMeals.length > 0
+                          ? 'Every picked meal is fully placed.'
+                          : 'Pick some meals first, on the Pick meals tab.'}
+                    </p>
+                  )}
+
+                  {unplacedEntries.length > 0 && (
+                    <div className={styles.entryChips} role="group" aria-label="Meal to place">
+                      {unplacedEntries.map((entry) => (
+                        <button
+                          key={entry.id}
+                          type="button"
+                          className={`${styles.entryChip} ${entry.id === selectedEntryId ? styles.entryChipActive : ''}`}
+                          aria-pressed={entry.id === selectedEntryId}
+                          onClick={() => handleSelectEntry(entry.id)}
+                        >
+                          {entry.name}{' '}
+                          <span className={styles.entryChipCount}>
+                            {formatServingCount(getEntryRemaining(plan, entry))} left
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
             </div>
 
-            {activeMobileTab === 'pick' && (
-              <>
-                {mealPicker}
-                {pickedMeals}
-              </>
-            )}
+            {activeMobileTab === 'pick' &&
+              (showPicker || plan.plannedMeals.length === 0 ? (
+                <>
+                  {plan.plannedMeals.length > 0 && (
+                    <div className={styles.pickerToggleRow}>
+                      <button
+                        type="button"
+                        className="button buttonSecondary"
+                        aria-expanded
+                        onClick={() => setShowPicker(false)}
+                      >
+                        Done adding — show picked meals first
+                      </button>
+                    </div>
+                  )}
+                  {mealPicker}
+                  {pickedMeals}
+                </>
+              ) : (
+                // A week that already has picks opens on them; the (long)
+                // library picker folds away until it's wanted.
+                <>
+                  {pickedMeals}
+                  <div className={styles.pickerToggleRow}>
+                    <button
+                      type="button"
+                      className="button buttonSecondary"
+                      aria-expanded={false}
+                      onClick={() => setShowPicker(true)}
+                    >
+                      + Add more meals
+                    </button>
+                  </div>
+                </>
+              ))}
 
             {activeMobileTab === 'assign' && (
               <>
-                {progressBars}
-                <p className={styles.emptyState}>
-                  {selectedEntryId
-                    ? 'Tap a highlighted cell to place the selected meal.'
-                    : "Tap a picked meal on the \"Pick meals\" tab to select it, then come back here and tap a cell."}
-                </p>
+                {showProgressDetail && progressBars}
                 <AssignmentDayView
                   plan={plan}
                   day={selectedDay}
@@ -319,6 +479,9 @@ export function PlanBuilderScreen({ plan }: PlanBuilderScreenProps) {
             )}
           </div>
         )}
+        <p className="srOnly" role="status" aria-live="polite">
+          {announcement}
+        </p>
       </div>
       <DragOverlay>
         {draggingEntry && (

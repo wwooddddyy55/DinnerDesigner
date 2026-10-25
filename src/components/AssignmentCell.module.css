@@ -139,3 +139,52 @@
     min-height: 44px;
   }
 }
+
+/* The place target inside an already-filled cell (combining meals). */
+.placeRow {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--color-primary);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-primary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  padding: var(--space-1);
+}
+
+.shareChip {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  padding: 0 var(--space-2);
+  min-height: 32px;
+}
+
+@media (pointer: coarse) {
+  .shareChip {
+    min-height: 44px;
+  }
+
+  /* No hover tooltips on touch: show long meal names in full instead. */
+  .occupantName {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (max-width: 700px) {
+  .cell {
+    font-size: 0.9rem;
+  }
+
+  .tapHint {
+    font-size: 0.85rem;
+  }
+}

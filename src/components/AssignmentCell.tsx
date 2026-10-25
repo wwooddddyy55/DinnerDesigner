@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import type { KeyboardEvent } from 'react'
 import {
@@ -33,6 +34,9 @@ export interface AssignmentCellProps {
   cellLabel?: string
   /** Name of the meal currently selected for placing, for the tap target's label. */
   placingName?: string
+  /** Phone layout: each occupant's −/+ share stepper stays hidden until its
+   * % chip is tapped, keeping combined cells short. */
+  compact?: boolean
 }
 
 export function AssignmentCell({
@@ -50,7 +54,9 @@ export function AssignmentCell({
   plan,
   cellLabel,
   placingName,
+  compact = false,
 }: AssignmentCellProps) {
+  const [editingShares, setEditingShares] = useState(false)
   const { isOver, setNodeRef } = useDroppable({
     id: dropId,
     disabled: !available || !droppable,
@@ -91,12 +97,14 @@ export function AssignmentCell({
 
   if (occupants.length > 0) {
     const occupantAssignments = occupants.map((o) => o.assignment)
+    const showSteppers = occupants.length > 1 && (!compact || editingShares)
+    // A filled cell holds its own remove/reweight buttons, so it is never
+    // itself the place target: a separate "+ Place here" row is, which keeps a
+    // stray tap on × or −/+ from adding the selected meal too.
     return (
       <div
         ref={setNodeRef}
         className={`${styles.cell} ${styles.cellFilled} ${droppable && isOver ? styles.cellOver : ''} ${canTap ? styles.cellTapEligible : ''}`}
-        onClick={handleTap}
-        {...tapProps}
       >
         {occupants.map(({ entry, assignment }) => {
           const fraction = getAssignmentFraction(assignment, occupantAssignments)
@@ -106,6 +114,7 @@ export function AssignmentCell({
           const canIncrease =
             assignment.weight < MAX_ASSIGNMENT_WEIGHT &&
             canSetAssignmentWeight(plan, assignment.id, assignment.weight + 1)
+          const percent = `${Math.round(fraction * 100)}%`
           return (
             <div className={styles.occupantRow} key={assignment.id} title={entry.name}>
               <div className={styles.occupantTop}>
@@ -123,8 +132,23 @@ export function AssignmentCell({
                 </button>
               </div>
               <div className={styles.occupantMeta}>
-                <span className={styles.occupantFraction}>{Math.round(fraction * 100)}%</span>
-                {occupants.length > 1 && (
+                {compact && occupants.length > 1 ? (
+                  <button
+                    type="button"
+                    className={styles.shareChip}
+                    aria-expanded={editingShares}
+                    aria-label={`${entry.name}: ${percent} of this meal. ${editingShares ? 'Hide' : 'Adjust'} shares`}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setEditingShares((v) => !v)
+                    }}
+                  >
+                    {percent} {editingShares ? '▴' : '▾'}
+                  </button>
+                ) : (
+                  <span className={styles.occupantFraction}>{percent}</span>
+                )}
+                {showSteppers && (
                   <span className={styles.weightStepper}>
                     <button
                       type="button"
@@ -154,6 +178,11 @@ export function AssignmentCell({
             </div>
           )
         })}
+        {canTap && (
+          <div className={styles.placeRow} onClick={handleTap} {...tapProps}>
+            + Place {placingName ?? 'here'} too
+          </div>
+        )}
       </div>
     )
   }

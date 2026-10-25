@@ -95,14 +95,16 @@ export function MealLibraryScreen() {
       </p>
 
       <div className={styles.filters}>
-        <MealSearchBar
-          query={query}
-          onQueryChange={setQuery}
-          sort={sort}
-          onSortChange={setSort}
-          shownCount={filteredMeals.length}
-          totalCount={meals.length}
-        />
+        <div className={`stickyBar ${styles.searchSticky}`}>
+          <MealSearchBar
+            query={query}
+            onQueryChange={setQuery}
+            sort={sort}
+            onSortChange={setSort}
+            shownCount={filteredMeals.length}
+            totalCount={meals.length}
+          />
+        </div>
         <select
           className={styles.mealTypeSelect}
           aria-label="Filter by meal type"

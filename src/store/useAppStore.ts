@@ -50,7 +50,7 @@ interface AppState {
     personId: string,
     mealType: MealType,
     day: number,
-  ) => void
+  ) => boolean
   clearAssignment: (planId: string, entryId: string, assignmentId: string) => void
   setAssignmentWeight: (planId: string, entryId: string, assignmentId: string, weight: number) => void
 
@@ -351,6 +351,9 @@ export const useAppStore = create<AppState>()(
       },
 
       assignMealToCell: (planId, entryId, personId, mealType, day) => {
+        // Reports whether the placement landed, so callers can tell a
+        // rejected tap (no capacity, cell full, unavailable) from a real one.
+        let placed = false
         set((state) => {
           const plan = state.plans.find((p) => p.id === planId)
           if (!plan) return state
@@ -373,6 +376,7 @@ export const useAppStore = create<AppState>()(
           if (alreadyConsumed + newFraction > entry.totalServings + CAPACITY_EPSILON) return state
 
           const assignment: MealAssignment = { id: generateId(), personId, mealType, day, weight: 1 }
+          placed = true
           return {
             plans: state.plans.map((p) =>
               p.id !== planId
@@ -386,6 +390,7 @@ export const useAppStore = create<AppState>()(
             ),
           }
         })
+        return placed
       },
 
       clearAssignment: (planId, entryId, assignmentId) => {

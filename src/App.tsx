@@ -58,7 +58,7 @@ function App() {
       <NavBar current={shownView} onNavigate={setView} hasActivePlan={Boolean(activePlanId)} />
       {shownView === 'setup' && <WeeklyPlanSetupScreen onNavigate={setView} />}
       {shownView === 'library' && <MealLibraryScreen />}
-      {shownView === 'plan' && activePlan && <PlanBuilderScreen plan={activePlan} />}
+      {shownView === 'plan' && activePlan && <PlanBuilderScreen key={activePlan.id} plan={activePlan} />}
       {shownView === 'shopping-list' && activePlan && <ShoppingListScreen plan={activePlan} />}
       {shownView === 'history' && <HistoryScreen />}
       <UndoToast />

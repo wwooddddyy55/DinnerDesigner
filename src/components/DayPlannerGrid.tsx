@@ -12,6 +12,13 @@ interface DayPlannerGridProps {
 
 const DAYS = [0, 1, 2, 3, 4, 5, 6]
 
+/** Narrow labels for the phone layout, where the grid must fit ~340px. */
+const MEAL_TYPE_SHORT_LABELS: Record<MealType, string> = {
+  breakfast: 'Bkfst',
+  lunch: 'Lunch',
+  dinner: 'Dinner',
+}
+
 export function DayPlannerGrid({ plan, onToggle }: DayPlannerGridProps) {
   return (
     <div className={styles.wrapper}>
@@ -30,12 +37,24 @@ export function DayPlannerGrid({ plan, onToggle }: DayPlannerGridProps) {
               <div className={`${styles.headerCell} ${styles.nameCell}`} />
               {DAYS.map((day) => (
                 <div className={styles.headerCell} key={day}>
-                  {formatDayHeader(plan.weekStartDate, day)}
+                  {/* "Mon 9/1", stacked onto two lines on phones. */}
+                  {formatDayHeader(plan.weekStartDate, day)
+                    .split(' ')
+                    .map((part, i) => (
+                      <span key={i} className={styles.headerPart}>
+                        {part}
+                      </span>
+                    ))}
                 </div>
               ))}
               {plan.selectedMealTypes.map((type) => (
                 <Fragment key={type}>
-                  <div className={styles.nameCell}>{MEAL_TYPE_LABELS[type]}</div>
+                  <div className={styles.nameCell}>
+                    <span className={styles.longLabel}>{MEAL_TYPE_LABELS[type]}</span>
+                    <span className={styles.shortLabel} aria-hidden="true">
+                      {MEAL_TYPE_SHORT_LABELS[type]}
+                    </span>
+                  </div>
                   {DAYS.map((day) => {
                     const available = isCellAvailable(person, type, day)
                     return (
@@ -47,7 +66,7 @@ export function DayPlannerGrid({ plan, onToggle }: DayPlannerGridProps) {
                         aria-label={`${person.name}, ${MEAL_TYPE_LABELS[type]}, ${formatDayHeader(plan.weekStartDate, day)}: ${available ? 'available' : 'not available'}`}
                         onClick={() => onToggle(person.id, type, day, !available)}
                       >
-                        {available ? 'Yes' : 'No'}
+                        <span aria-hidden="true">{available ? 'Yes' : 'No'}</span>
                       </button>
                     )
                   })}

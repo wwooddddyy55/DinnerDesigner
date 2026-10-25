@@ -10,15 +10,29 @@ all and everything stays local to that one browser, exactly as before.
 ## Getting around
 
 - The top bar switches between the five screens. **Plan Builder** and **Shopping List** stay
-  disabled until a week exists; a line under the bar says so.
+  disabled until a week exists; a line under the bar says so. On a phone the five screens get a
+  row of their own under the app name, with short labels (**Setup**, **Meals**, **Plan**, **Shop**,
+  **History**), so they all fit without scrolling.
 - The **Theme** button at the right end of the top bar cycles **auto** (follow your device's
   light/dark setting), **light**, and **dark**. Home Assistant's own dark theme doesn't reach the
   add-on's panel, so pick **dark** here if you use a dark dashboard. The choice is remembered per
   browser.
 - Every dialog closes with **Escape**, and keyboard focus stays inside it while it's open.
-- **Undo:** removing a picked meal or a person, deleting a week, and importing data each show an
-  **Undo** bar at the bottom of the screen for about 8 seconds. Only the most recent action can be
-  undone, and only in the tab where you did it.
+- **Undo:** removing a picked meal or a person, taking a meal off a slot with **×**, deleting a
+  week, and importing data each show an **Undo** bar at the bottom of the screen for about 8
+  seconds. Only the most recent action can be undone, and only in the tab where you did it.
+
+### On a phone
+
+- Dialogs (adding or editing a meal, importing a recipe) fill the screen, with the title and the
+  **Save**/**Cancel** buttons pinned so they stay reachable while the keyboard is open. **×** in the
+  title row closes without saving.
+- Long screens keep their key controls pinned while you scroll: the Plan Builder's tabs and
+  progress, the Meal Library's search box, and the Shopping List's progress and buttons.
+- **Add to Home Screen** (from your phone browser's share or menu button) gives DinnerDesigner its
+  own icon and opens it full screen. Add the add-on's direct `:8099` address rather than the Home
+  Assistant sidebar panel's page: the panel's address changes, so a shortcut to it stops working.
+  In the Home Assistant Companion app, just use the sidebar panel.
 
 ## Cross-device sync
 
@@ -44,7 +58,7 @@ that opens the app syncs with it:
   local copy and keeps retrying. Unsaved changes are remembered even if you close the tab or reload,
   and are merged in once the add-on is reachable again.
 - A small status label at the right end of the top bar shows **Synced**, **Saving…**, **Sync error —
-  retrying**, or **Offline** (hover it for details). It's hidden when the app has no add-on to sync
+  retrying**, or **Offline** (tap or hover it for a one-line explanation). It's hidden when the app has no add-on to sync
   with.
 - The very first time sync turns on, whichever device already had data becomes the shared starting
   point for every other device.
@@ -77,8 +91,14 @@ example, local development) has no backend to sync with and behaves exactly as i
     marked as cooked last week), unplaced.
   - **…and where they were placed on the grid** also keeps each batch's placements, on the same
     days of the week, for the copied people.
+- Each part of the screen below the week picker (**Start a new week**, **Meal types this week**,
+  **People**, **Day planner**, **Servings targets**, **Data**) is a section you can fold away by
+  tapping its heading; the heading stays at the top of the screen while you scroll through it.
+  Once a week is selected, **Start a new week** and **Data** start folded, since they're needed less
+  often.
 - Once a week is selected, a checklist strip shows what's done: **Week started**, **Meal types
-  chosen**, **People added**, **Meals picked**. With meal types and people set, **Next: pick meals →**
+  chosen**, **People added**, **Meals picked**. An unfinished step is a link to where it's done
+  (opening that section if it's folded). With meal types and people set, **Next: pick meals →**
   (and the checklist's **Meals picked** step) takes you to the Plan Builder.
 - Choose which meal types (breakfast/lunch/dinner) you're planning for this week.
 - Add each person eating that week (just a name — servings targets are set in the Day planner
@@ -88,7 +108,8 @@ example, local development) has no backend to sync with and behaves exactly as i
   weekly serving target for a meal type is simply however
   many days they're marked available for it — defaults to all 7 days, so a new person or a newly
   tracked meal type starts at a target of 7 until you toggle days off (e.g. if they're eating out
-  some nights).
+  some nights). On a phone the whole week fits across the screen (short meal-type labels, the day
+  and date stacked in each column header).
 - **Export data** downloads your full meal library and plan history as a JSON file. **Import data**
   loads a previously exported file, replacing everything currently in the app — after a confirmation
   that shows how many meals and weeks you have now and how many the file contains, and with
@@ -111,6 +132,11 @@ by **Name**, **Haven't had in a while** (never-picked meals first, then the long
 last picked), **Most often picked**, or **Recently added**. A count shows how many meals the filters
 leave, and each card shows when that meal was last picked into a week. If nothing matches, **Clear
 filters** resets the search and filters; an empty library offers **+ Add meal** and **Import recipe**.
+
+In the add/edit form, pressing **Enter** (the keyboard's **Next** key on a phone) in an ingredient
+moves from the name to the quantity to the unit, then on to the next ingredient — adding a new row
+after the last one — instead of saving the meal half-typed. Number fields can be cleared and
+retyped without snapping back to 0.
 
 Each meal has a name, protein, one or more eligible meal types
 (breakfast/lunch/dinner), a servings-per-batch count, an ingredient list, and an optional link back to
@@ -149,10 +175,14 @@ shown at once, so you can see servings picked vs. target across all of them with
 Under each bar, **Still empty:** lists the first few available slots with nothing placed yet (with
 the person's name when more than one person is eating).
 
-**On a narrow (mobile) screen**, the page becomes two tabs instead of one long scrolling page:
-**Pick meals** (the picker and picked-meals list below) and **Assign** (the progress bars and the
-Assignment grid, shown as one day at a time — see **Placing meals on mobile** below). Selecting a
-picked meal to place automatically switches you to the Assign tab. On a wider screen there's a
+**On a narrow (mobile) screen** — or a phone turned sideways — the page becomes two tabs instead of
+one long scrolling page: **Pick meals** (the picker and picked-meals list below) and **Assign** (the
+Assignment grid, shown as one day at a time — see **Placing meals on mobile** below). The **Assign**
+tab shows how many picked meals still have servings to place. On **Pick meals**, the meal library
+is shown while you're choosing; for a week that already has picks, the picked meals come first and
+**+ Add more meals** opens the library (**Done adding** puts the picked meals first again). The
+library's filter chips sit behind a **Filters** button there, which shows how many are on. On a
+wider screen there's a
 sidebar picker alongside the picked-meals list and full Assignment grid; in a medium-width window
 (under about 960px, e.g. Home Assistant's panel next to its sidebar) the picker sits above the rest
 instead of beside it.
@@ -180,7 +210,8 @@ included). Once any of a meal's servings are shared with another meal in a combi
 ### Marking a picked meal as leftover from a previous week
 
 If a batch was actually cooked *last* week and some of it is still in the fridge/freezer, check
-**Already cooked last week (carry-over)** on that meal's card in the **Picked meals** list. A **Servings left**
+**Already cooked last week (carry-over)** on that meal's card in the **Picked meals** list (on a
+phone, tap **Options…** on the card first). A **Servings left**
 field appears — set it to however many servings of the batch remain (e.g. `3` of a `6`-serving
 batch); the "X/Y placed" badge immediately reflects that starting point (e.g. `3/6 placed`) even
 before you've dragged the card onto the Assignment grid, and only the remaining servings can be
@@ -205,7 +236,9 @@ per person) below the picked-meals list:
   servings actually placed for that type. Dragging works with touch as well as a mouse — press and
   hold a card briefly before moving it, so a quick swipe still scrolls the page normally.
 - **Click instead of drag:** click **Place** on a card (it changes to **Choosing cell…**), then click
-  any highlighted **+ Place here** cell. Click **Choosing cell…** again to cancel. This also works
+  highlighted **+ Place here** cells. The meal stays selected while its batch has servings left, so
+  you can place serving after serving; click **Choosing cell…** again to stop. Only cells the batch
+  still has room for are highlighted. This also works
   entirely from the keyboard: Tab to **Place**, press Enter, Tab to a highlighted cell, press Enter.
   The drag handle is keyboard-draggable too (focus it, press Space, move with the arrow keys, press
   Space to drop). A **How placing works** summary sits above the grid.
@@ -226,20 +259,24 @@ per person) below the picked-meals list:
 ### Placing meals on mobile
 
 Precise drag-and-drop is hard on a touchscreen, so on a narrow screen you place meals by tapping
-instead:
+instead (there's no drag handle on the cards there):
 
-1. On the **Pick meals** tab, tap a card (or its **Place** button) in the **Picked meals** list to
-   select it (it gets a highlighted outline). You're automatically switched to the **Assign** tab.
-2. The Assign tab shows the Assignment grid one day at a time — use the day switcher across the top
-   to pick which of the week's 7 days you're placing into. Eligible cells for the selected meal are
-   highlighted.
-3. Tap a highlighted cell to place a serving there — same result as dragging on a larger screen.
-   Placing clears the selection; tap the card again to select it and place another serving elsewhere.
-4. Tap an already-selected card again to deselect it without placing anything.
+1. Tap a picked meal — its card (or **Place**) on the **Pick meals** tab, or its chip at the top of
+   the **Assign** tab, which lists every meal with servings left ("Lasagna 6 left"). You're switched
+   to the Assign tab, and a bar at the top shows **Placing Lasagna · 2/8 placed**.
+2. Pick a day from the day switcher. Each day shows how many slots are still empty — or, while a
+   meal is selected, how many slots it could still go into ("3 can take it"); days nobody is eating
+   are faded. It opens on today when you're looking at the current week, and **Next day with room
+   →** jumps ahead to the next day that still has space.
+3. Tap highlighted slots to place servings. The meal **stays selected** after each tap, so placing a
+   whole batch is just a tap per slot; it's deselected once every serving is placed, or when you tap
+   **Done** (or the meal again). On phones that support it, a successful tap gives a short buzz; a
+   tap that can't be placed gives a double buzz and leaves the meal selected.
 
-The drag handle (the small grip icon on each card) still works if you'd rather drag on a touchscreen,
-but tapping is the easier path on a phone. On a wider screen, dragging a card onto the full-week grid
-works exactly as described above in **Leftovers**.
+The pinned bar at the top of the Assign tab also has a one-line progress summary for every meal type
+(e.g. **Lunch 5/14 · Dinner 9/14**); tap it to show the full progress bars with their **Still empty**
+lists. On a wider screen, dragging a card onto the full-week grid works exactly as described above in
+**Leftovers**.
 
 ### Combining meals in one slot
 
@@ -250,7 +287,8 @@ meal card onto a cell that's **already holding a meal** to combine them there:
 - Every item sharing a cell defaults to an even split of that cell — two items are 50/50 each, three
   are a third each, four are a quarter each — shown as a percentage next to each item's name.
 - A cell holds **up to 4 combined items**; dropping a 5th is rejected.
-- Each item's share is adjustable with the small **−/+** buttons next to it. Raising one item's share
+- Each item's share is adjustable with the small **−/+** buttons next to it (on a phone, tap the
+  item's **%** to show them). Raising one item's share
   shrinks everyone else's in that same cell to compensate — a change is only allowed if it doesn't
   push any of the combined items' batches over their own total servings.
 - Click any item's **×** to remove just that one from the cell — the remaining items automatically
@@ -261,6 +299,9 @@ meal card onto a cell that's **already holding a meal** to combine them there:
   blocked; instead that meal's "X/Y placed" badge turns red with **— over batch size**. Fix it by
   removing one of its placements, or with the −/+ buttons (changes that reduce the overage are
   allowed even while it's still over).
+- With a meal selected for placing (see **Click instead of drag**), a slot that already holds
+  something shows a separate **+ Place … too** button for combining, so tapping its **×** or **−/+**
+  never adds the selected meal by mistake.
 - Combining only changes how much of *that item's own batch* a slot consumes — it does not change the
   shopping list, which still counts each batch's ingredients exactly once regardless of how many
   slots (or how much of each slot) it's spread across.
@@ -278,7 +319,13 @@ checkable list:
 - Batches marked **Already cooked last week** are left off, with a note naming them; tick **Include
   their ingredients anyway** to add them back.
 - The header shows how many items you've ticked (with a progress bar); **Hide ticked** hides the ones
-  you've already got.
+  you've already got. The header stays pinned at the top while you scroll the list, and rows are
+  sized for one-handed ticking on a phone.
+- While the list is open, the app asks your phone to keep the screen from dimming or locking, so it
+  stays usable in the shop. Browsers only allow this on a secure (`https://`) page, so it works when
+  you reach Home Assistant over HTTPS (e.g. through Home Assistant Cloud or your own certificate) but
+  not on a plain-HTTP address such as the `:8099` port; where it isn't allowed, the screen just dims
+  as usual.
 - **Copy list as text** copies the items you haven't ticked (or the whole list, if everything is
   ticked) as plain "Name — quantity unit" lines, ready to paste into a notes app, a message, or Home
   Assistant's shopping list. If the browser blocks automatic copying, a text box appears for copying
@@ -293,6 +340,8 @@ The History tab looks across every week you've ever planned (no active week requ
 - **What haven't we had in a while?** ranks every meal you've ever picked by how long it's been
   since it was last served (longest-ago first), plus how many distinct weeks it's appeared in.
   "Served" here means week-level — it tracks which week a meal was picked into, not which exact day.
+  On a phone each meal is shown as its own row (name, then last served and times served) instead of
+  a table.
 
 If you haven't started any weekly plans yet, this tab just shows a short empty-state message.
 

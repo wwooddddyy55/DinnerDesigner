@@ -1,5 +1,5 @@
 .page {
-  padding: var(--space-5);
+  padding: var(--page-pad);
   max-width: 900px;
   margin: 0 auto;
   display: flex;
@@ -28,6 +28,7 @@
 
 .mealTypeSelect {
   max-width: 200px;
+  min-height: 44px;
   padding: var(--space-2);
   border-radius: var(--radius-sm);
   border: 1px solid var(--color-border);
@@ -46,4 +47,9 @@
 .hint {
   font-size: 0.85rem;
   margin: 0;
+}
+
+/* The search box stays reachable while scrolling a long library. */
+.searchSticky {
+  padding-top: var(--space-2);
 }
