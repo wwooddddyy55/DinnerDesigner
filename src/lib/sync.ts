@@ -1,11 +1,12 @@
 import { isDeepEqual } from './equal'
 import { CURRENT_SCHEMA_VERSION, normalizeAppData } from './migrations'
 import { useAppStore } from '../store/useAppStore'
-import type { Meal, WeeklyPlan } from '../types'
+import type { Meal, Staple, WeeklyPlan } from '../types'
 
 export interface SyncStatePayload {
   meals: Meal[]
   plans: WeeklyPlan[]
+  staples: Staple[]
   activePlanId: string | null
   hasSeededMeals: boolean
 }
@@ -164,10 +165,11 @@ async function pushServerState(payload: SyncStatePayload, baseUpdatedAt: number,
 /** Normalizes untrusted server JSON (anyone who can reach the add-on can
  * write it) into a safe, current-shape state before anything touches it. */
 function toServerState(raw: Partial<ServerState>): ServerState {
-  const { meals, plans } = normalizeAppData(raw)
+  const { meals, plans, staples } = normalizeAppData(raw)
   return {
     meals,
     plans,
+    staples,
     activePlanId: typeof raw.activePlanId === 'string' ? raw.activePlanId : null,
     hasSeededMeals: Boolean(raw.hasSeededMeals),
     updatedAt: raw.updatedAt ?? 0,
@@ -223,9 +225,11 @@ function mergeStates(
 ): SyncStatePayload {
   const meals = mergeById(baseState?.meals ?? null, local.meals, server.meals)
   const plans = mergeById(baseState?.plans ?? null, local.plans, server.plans)
+  const staples = mergeById(baseState?.staples ?? null, local.staples, server.staples)
   return {
     meals,
     plans,
+    staples,
     activePlanId: pickActivePlanId(local.activePlanId, server.activePlanId, plans),
     hasSeededMeals: local.hasSeededMeals || server.hasSeededMeals,
   }
@@ -246,19 +250,19 @@ function pickActivePlanId(local: string | null, server: string | null, plans: We
 /** Whether two states hold the same shared data. `activePlanId` and
  * `hasSeededMeals` are left out: they're per-device and never worth a push. */
 function sameSharedData(a: SyncStatePayload, b: SyncStatePayload): boolean {
-  return isDeepEqual(a.meals, b.meals) && isDeepEqual(a.plans, b.plans)
+  return isDeepEqual(a.meals, b.meals) && isDeepEqual(a.plans, b.plans) && isDeepEqual(a.staples, b.staples)
 }
 
 // --- applying state -----------------------------------------------------------
 
 function currentPayload(): SyncStatePayload {
-  const { meals, plans, activePlanId, hasSeededMeals } = useAppStore.getState()
-  return { meals, plans, activePlanId, hasSeededMeals }
+  const { meals, plans, staples, activePlanId, hasSeededMeals } = useAppStore.getState()
+  return { meals, plans, staples, activePlanId, hasSeededMeals }
 }
 
 function stripVersion(server: ServerState): SyncStatePayload {
-  const { meals, plans, activePlanId, hasSeededMeals } = server
-  return { meals, plans, activePlanId, hasSeededMeals }
+  const { meals, plans, staples, activePlanId, hasSeededMeals } = server
+  return { meals, plans, staples, activePlanId, hasSeededMeals }
 }
 
 /** Writes state into the store without it counting as a local edit (so it
@@ -436,7 +440,7 @@ export function startSyncLoop(): () => void {
   const unsubscribe = useAppStore.subscribe((state, prev) => {
     if (applyingRemote) return
     // Switching weeks (activePlanId) is per-device; only shared data is pushed.
-    if (state.meals === prev.meals && state.plans === prev.plans) return
+    if (state.meals === prev.meals && state.plans === prev.plans && state.staples === prev.staples) return
     changeSeq++
     markDirty(true)
     if (!backendAvailable) return

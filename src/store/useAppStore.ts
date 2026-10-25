@@ -4,12 +4,13 @@ import { createSeedMeals } from '../data/seedMeals'
 import { CAPACITY_EPSILON, canSetAssignmentWeight, findCellAssignments, getEntryConsumedServings } from '../lib/calculations'
 import { generateId } from '../lib/id'
 import { CURRENT_SCHEMA_VERSION, migratePerson, migratePlannedMealEntry, normalizeAppData } from '../lib/migrations'
-import type { Meal, MealAssignment, MealType, Person, PlannedMealEntry, WeeklyPlan } from '../types'
-import { DAYS_PER_WEEK, MAX_ASSIGNMENT_WEIGHT, MAX_CELL_OCCUPANTS, MIN_ASSIGNMENT_WEIGHT } from '../types'
+import type { AppData, Meal, MealAssignment, MealType, Person, PlannedMealEntry, Staple, WeeklyPlan } from '../types'
+import { DAYS_PER_WEEK, MAX_ASSIGNMENT_WEIGHT, MAX_CELL_OCCUPANTS, MIN_ASSIGNMENT_WEIGHT, stapleKey } from '../types'
 
 interface AppState {
   meals: Meal[]
   plans: WeeklyPlan[]
+  staples: Staple[]
   activePlanId: string | null
   hasSeededMeals: boolean
 
@@ -54,7 +55,12 @@ interface AppState {
   clearAssignment: (planId: string, entryId: string, assignmentId: string) => void
   setAssignmentWeight: (planId: string, entryId: string, assignmentId: string, weight: number) => void
 
-  replaceAllData: (data: { meals: Meal[]; plans: WeeklyPlan[] }) => void
+  /** Marks an ingredient name as always on hand. No-op for a blank name or
+   * one that's already a staple. */
+  addStaple: (name: string) => void
+  removeStaple: (id: string) => void
+
+  replaceAllData: (data: AppData) => void
 }
 
 export interface StartNewWeekOptions {
@@ -90,6 +96,7 @@ export const useAppStore = create<AppState>()(
     (set, get) => ({
       meals: [],
       plans: [],
+      staples: [],
       activePlanId: null,
       hasSeededMeals: false,
 
@@ -438,8 +445,19 @@ export const useAppStore = create<AppState>()(
         })
       },
 
-      replaceAllData: ({ meals, plans }) => {
-        set({ meals, plans, activePlanId: null, hasSeededMeals: true })
+      addStaple: (name) => {
+        const id = stapleKey(name)
+        if (id.length === 0 || get().staples.some((s) => s.id === id)) return
+        const staple: Staple = { id, name: name.trim(), updatedAt: new Date().toISOString() }
+        set((state) => ({ staples: [...state.staples, staple] }))
+      },
+
+      removeStaple: (id) => {
+        set((state) => ({ staples: state.staples.filter((s) => s.id !== id) }))
+      },
+
+      replaceAllData: ({ meals, plans, staples }) => {
+        set({ meals, plans, staples, activePlanId: null, hasSeededMeals: true })
       },
     }),
     {
@@ -447,9 +465,10 @@ export const useAppStore = create<AppState>()(
       version: CURRENT_SCHEMA_VERSION,
       migrate: (persistedState) => {
         const state = (persistedState ?? {}) as Record<string, unknown>
-        const { meals, plans } = normalizeAppData(state)
+        const { meals, plans, staples } = normalizeAppData(state)
         state.meals = meals
         state.plans = plans
+        state.staples = staples
         return state as unknown as AppState
       },
     },

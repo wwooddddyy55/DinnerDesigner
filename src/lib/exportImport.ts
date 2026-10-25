@@ -1,18 +1,23 @@
 import { CURRENT_SCHEMA_VERSION, normalizeAppData } from './migrations'
-import type { Meal, WeeklyPlan } from '../types'
+import type { AppData } from '../types'
 
-export interface ExportedData {
+export interface ExportedData extends AppData {
   /** Export file format version (the wrapper shape). */
   version: 1
-  /** Data shape version of `meals`/`plans` — see `CURRENT_SCHEMA_VERSION`. */
+  /** Data shape version of `meals`/`plans`/`staples` — see `CURRENT_SCHEMA_VERSION`. */
   schemaVersion: number
   exportedAt: string
-  meals: Meal[]
-  plans: WeeklyPlan[]
 }
 
-export function buildExport(meals: Meal[], plans: WeeklyPlan[]): ExportedData {
-  return { version: 1, schemaVersion: CURRENT_SCHEMA_VERSION, exportedAt: new Date().toISOString(), meals, plans }
+export function buildExport({ meals, plans, staples }: AppData): ExportedData {
+  return {
+    version: 1,
+    schemaVersion: CURRENT_SCHEMA_VERSION,
+    exportedAt: new Date().toISOString(),
+    meals,
+    plans,
+    staples,
+  }
 }
 
 export function downloadExport(data: ExportedData): void {
@@ -29,8 +34,8 @@ export function downloadExport(data: ExportedData): void {
 /** Parses an export file. Old-shape records are migrated and malformed ones
  * repaired or dropped via `normalizeAppData`, so a hand-edited or
  * older-version file can't put the app (or, through sync, every device) into
- * a crashing state. */
-export function parseImport(text: string): { meals: Meal[]; plans: WeeklyPlan[] } {
+ * a crashing state. A file from before staples existed imports with none. */
+export function parseImport(text: string): AppData {
   let parsed: unknown
   try {
     parsed = JSON.parse(text)

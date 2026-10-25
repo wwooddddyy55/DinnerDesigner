@@ -20,6 +20,49 @@
   padding: var(--space-3);
 }
 
+/* The tickable part of a row; "Always have" sits beside it, outside the
+   label, so tapping the button never ticks the item. */
+.rowLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex: 1;
+  min-width: 0;
+  align-self: stretch;
+}
+
+.alwaysHave {
+  flex-shrink: 0;
+  font-size: 0.8rem;
+}
+
+.staples summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.staplesHint {
+  margin: var(--space-2) 0;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.stapleList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.stapleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
 .checked {
   opacity: 0.5;
   text-decoration: line-through;

@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import type { View } from '../lib/navigation'
 import { getSyncStatus, subscribeSyncStatus } from '../lib/sync'
 import type { SyncStatus } from '../lib/sync'
 import { THEME_LABELS, getThemePreference, nextThemePreference, setThemePreference } from '../lib/theme'
 import styles from './NavBar.module.css'
-
-export type View = 'setup' | 'library' | 'plan' | 'shopping-list' | 'history'
 
 interface NavBarProps {
   current: View

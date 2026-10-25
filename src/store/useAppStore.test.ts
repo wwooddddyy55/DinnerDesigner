@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import type { Person, PlannedMealEntry, WeeklyPlan } from '../types'
+import { normalizeAppData } from '../lib/migrations'
 import { migratePlannedMealEntry, useAppStore } from './useAppStore'
 
 function makePerson(id: string): Person {
@@ -37,7 +38,40 @@ function getPlan(): WeeklyPlan {
 }
 
 beforeEach(() => {
-  useAppStore.setState({ meals: [], plans: [], activePlanId: null, hasSeededMeals: true })
+  useAppStore.setState({ meals: [], plans: [], staples: [], activePlanId: null, hasSeededMeals: true })
+})
+
+describe('staples', () => {
+  it('adds a staple keyed by its normalized name, ignoring repeats and blanks', () => {
+    const { addStaple } = useAppStore.getState()
+    addStaple('  Olive  Oil ')
+    addStaple('olive oil')
+    addStaple('   ')
+    expect(useAppStore.getState().staples.map(({ id, name }) => ({ id, name }))).toEqual([
+      { id: 'olive oil', name: 'Olive  Oil' },
+    ])
+  })
+
+  it('removes a staple by id', () => {
+    useAppStore.getState().addStaple('Salt')
+    useAppStore.getState().removeStaple('salt')
+    expect(useAppStore.getState().staples).toEqual([])
+  })
+})
+
+describe('normalizeAppData staples', () => {
+  it('gives old data no staples, and re-keys and dedupes untrusted ones', () => {
+    expect(normalizeAppData({ meals: [], plans: [] }).staples).toEqual([])
+    const { staples } = normalizeAppData({
+      staples: [
+        { id: 'whatever', name: ' Salt ', updatedAt: 't1' },
+        { id: 'salt', name: 'SALT', updatedAt: 't2' },
+        { name: '' },
+        'pepper',
+      ],
+    })
+    expect(staples).toEqual([{ id: 'salt', name: 'Salt', updatedAt: 't1' }])
+  })
 })
 
 describe('assignMealToCell', () => {

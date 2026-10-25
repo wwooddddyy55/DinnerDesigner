@@ -28,6 +28,7 @@ import { formatDayHeader, toIsoDate } from '../lib/date'
 import { parseCellDroppableId, parsePickedEntryDraggableId } from '../lib/dragDrop'
 import { getMealServedIndex, matchesMealSearch, sortMeals } from '../lib/mealSearch'
 import type { MealSort } from '../lib/mealSearch'
+import { useNavigate } from '../lib/navigation'
 import { offerUndo } from '../lib/undo'
 import { TOUCH_LAYOUT_QUERY, useMediaQuery } from '../lib/useMediaQuery'
 import { useAppStore } from '../store/useAppStore'
@@ -63,6 +64,7 @@ interface PlanBuilderScreenProps {
 }
 
 export function PlanBuilderScreen({ plan }: PlanBuilderScreenProps) {
+  const navigate = useNavigate()
   const meals = useAppStore((s) => s.meals)
   const plans = useAppStore((s) => s.plans)
   const restorePlan = useAppStore((s) => s.restorePlan)
@@ -192,9 +194,12 @@ export function PlanBuilderScreen({ plan }: PlanBuilderScreenProps) {
   if (plan.selectedMealTypes.length === 0) {
     return (
       <div className={styles.page}>
-        <p className={styles.emptyState}>
-          Select at least one meal type on the Weekly Setup screen to start building a plan.
-        </p>
+        <div className={styles.emptyState}>
+          <p>Select at least one meal type on the Weekly Setup screen to start building a plan.</p>
+          <button type="button" className="button" onClick={() => navigate('setup')}>
+            Go to Weekly Setup
+          </button>
+        </div>
       </div>
     )
   }

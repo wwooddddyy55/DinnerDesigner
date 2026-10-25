@@ -7,8 +7,10 @@ import {
   MEAL_TYPES,
   MIN_ASSIGNMENT_WEIGHT,
   PROTEIN_TYPES,
+  stapleKey,
 } from '../types'
 import type {
+  AppData,
   Ingredient,
   Meal,
   MealAssignment,
@@ -16,14 +18,15 @@ import type {
   Person,
   PlannedMealEntry,
   ProteinType,
+  Staple,
   WeeklyPlan,
 } from '../types'
 
 /** Version of the persisted data shape. Shared by the localStorage persist
  * config, the sync payload, and JSON export, so all three agree on what
  * "current" means. Bump it (and extend `normalizeAppData`) for any shape
- * change. */
-export const CURRENT_SCHEMA_VERSION = 4
+ * change. 5: household `staples`. */
+export const CURRENT_SCHEMA_VERSION = 5
 
 /** Converts a pre-day-planner Person (numeric `servingsPerMealType`) into
  * the current `availability` shape. For each meal type the person had an
@@ -206,20 +209,38 @@ export function normalizePlan(raw: unknown, meals: Meal[]): WeeklyPlan | null {
   return keepIfSame(raw, plan)
 }
 
+/** Keeps staples with a usable name, re-deriving `id` from it so ids always
+ * match `stapleKey`, and drops repeats of the same name (first one wins). */
+function normalizeStaples(value: unknown): Staple[] {
+  if (!Array.isArray(value)) return []
+  const now = new Date().toISOString()
+  const seen = new Set<string>()
+  const staples: Staple[] = []
+  for (const raw of value) {
+    if (!isObject(raw) || typeof raw.name !== 'string') continue
+    const id = stapleKey(raw.name)
+    if (id.length === 0 || seen.has(id)) continue
+    seen.add(id)
+    staples.push(keepIfSame(raw, { id, name: raw.name.trim(), updatedAt: asString(raw.updatedAt, now) }))
+  }
+  return staples
+}
+
 /** The single entry point for turning untrusted/old-shape data — localStorage
  * from an older build, a JSON import file, or the shared server state (which
- * anyone reaching the add-on can write) — into current-shape `meals`/`plans`.
- * Migrates old shapes, drops records too broken to use (no id, wrong type),
- * repairs individual bad fields to safe defaults, strips non-http(s) recipe
- * links, and removes assignments pointing at people that don't exist.
- * Idempotent: running it on already-current data returns equal data (and the
- * same object references for records that needed no change). */
-export function normalizeAppData(data: { meals?: unknown; plans?: unknown }): { meals: Meal[]; plans: WeeklyPlan[] } {
+ * anyone reaching the add-on can write) — into current-shape `meals`/`plans`/
+ * `staples`. Migrates old shapes (data from before staples existed gets none),
+ * drops records too broken to use (no id, wrong type), repairs individual bad
+ * fields to safe defaults, strips non-http(s) recipe links, and removes
+ * assignments pointing at people that don't exist. Idempotent: running it on
+ * already-current data returns equal data (and the same object references
+ * for records that needed no change). */
+export function normalizeAppData(data: { meals?: unknown; plans?: unknown; staples?: unknown }): AppData {
   const meals = (Array.isArray(data.meals) ? data.meals : [])
     .map(normalizeMeal)
     .filter((m): m is Meal => m !== null)
   const plans = (Array.isArray(data.plans) ? data.plans : [])
     .map((p) => normalizePlan(p, meals))
     .filter((p): p is WeeklyPlan => p !== null)
-  return { meals, plans }
+  return { meals, plans, staples: normalizeStaples(data.staples) }
 }

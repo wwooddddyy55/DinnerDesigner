@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { MealAssignment, PlannedMealEntry, Person, WeeklyPlan } from '../types'
-import { formatShoppingListText, getLeftoverEntries, getOpenCells, getShoppingList } from './calculations'
+import { formatShoppingListText, getLeftoverEntries, getOpenCells, getShoppingList, splitStaples } from './calculations'
 
 function makeEntry(overrides: Partial<PlannedMealEntry> = {}): PlannedMealEntry {
   return {
@@ -113,11 +113,35 @@ describe('getShoppingList — leftovers, units and sources', () => {
 describe('formatShoppingListText', () => {
   it('writes one "name — qty unit" line per item', () => {
     expect(
-      formatShoppingListText([
-        { key: 'a', name: 'Beans', unit: 'cans', quantity: 2, sources: [] },
-        { key: 'b', name: 'Eggs', unit: '', quantity: 6, sources: [] },
-      ]),
+      formatShoppingListText(
+        [
+          { key: 'a', name: 'Beans', unit: 'cans', quantity: 2, sources: [] },
+          { key: 'b', name: 'Eggs', unit: '', quantity: 6, sources: [] },
+        ],
+        'en-US',
+      ),
     ).toBe('Beans — 2 cans\nEggs — 6')
+  })
+
+  it("writes quantities with the locale's decimal separator", () => {
+    expect(
+      formatShoppingListText([{ key: 'a', name: 'Flour', unit: 'kg', quantity: 1.25, sources: [] }], 'de-DE'),
+    ).toBe('Flour — 1,25 kg')
+  })
+})
+
+describe('splitStaples', () => {
+  const line = (name: string) => ({ key: name.toLowerCase(), name, unit: '', quantity: 1, sources: [] })
+
+  it('moves lines matching a staple (case- and spacing-insensitive) out of the to-buy list', () => {
+    const staples = [{ id: 'olive oil', name: 'Olive oil', updatedAt: '' }]
+    const result = splitStaples([line('Beans'), line('  olive   OIL '), line('Salt')], staples)
+    expect(result.toBuy.map((l) => l.name)).toEqual(['Beans', 'Salt'])
+    expect(result.staples.map((l) => l.name)).toEqual(['  olive   OIL '])
+  })
+
+  it('leaves the list alone with no staples', () => {
+    expect(splitStaples([line('Beans')], []).toBuy).toHaveLength(1)
   })
 })
 

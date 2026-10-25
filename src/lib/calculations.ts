@@ -1,7 +1,7 @@
 import { fromBaseUnit, toBaseUnit } from './units'
 import type { UnitFamily } from './units'
-import { DAYS_PER_WEEK, MAX_CELL_OCCUPANTS } from '../types'
-import type { MealAssignment, MealType, PlannedMealEntry, Person, WeeklyPlan } from '../types'
+import { DAYS_PER_WEEK, MAX_CELL_OCCUPANTS, stapleKey } from '../types'
+import type { MealAssignment, MealType, PlannedMealEntry, Person, Staple, WeeklyPlan } from '../types'
 
 export const CAPACITY_EPSILON = 1e-9
 
@@ -149,10 +149,16 @@ export function isEntryOverCapacity(plan: WeeklyPlan, entry: PlannedMealEntry): 
   return getEntryConsumedServings(plan, entry) > entry.totalServings + CAPACITY_EPSILON
 }
 
-/** Trims a fractional serving count to at most 2 decimals with no trailing
- * zeros (e.g. 2.5, 2, 0.33), for display in the "placed" badge. */
-export function formatServingCount(n: number): string {
-  return (Math.round(n * 100) / 100).toString()
+/** Formats a number with at most 2 decimals and no trailing zeros (e.g. 2.5,
+ * 2, 0.33), using the device's decimal separator ("2,5" in much of Europe).
+ * `locale` is injectable for tests. */
+export function formatQuantity(n: number, locale?: string): string {
+  return n.toLocaleString(locale, { maximumFractionDigits: 2, useGrouping: false })
+}
+
+/** A fractional serving count for the "placed" badge — see `formatQuantity`. */
+export function formatServingCount(n: number, locale?: string): string {
+  return formatQuantity(n, locale)
 }
 
 /** Whether changing one assignment's weight to `proposedWeight` would push
@@ -331,8 +337,21 @@ export function getShoppingList(plan: WeeklyPlan, options: ShoppingListOptions =
     .sort((a, b) => a.name.localeCompare(b.name))
 }
 
+/** Splits shopping-list lines into what to buy and the household staples
+ * (matched by `stapleKey`), which are listed separately and never copied. */
+export function splitStaples(
+  lines: ShoppingListLine[],
+  staples: Staple[],
+): { toBuy: ShoppingListLine[]; staples: ShoppingListLine[] } {
+  const stapleIds = new Set(staples.map((s) => s.id))
+  const toBuy: ShoppingListLine[] = []
+  const stapleLines: ShoppingListLine[] = []
+  for (const line of lines) (stapleIds.has(stapleKey(line.name)) ? stapleLines : toBuy).push(line)
+  return { toBuy, staples: stapleLines }
+}
+
 /** Plain-text version of a shopping list for pasting into a notes app,
  * message, or Home Assistant's shopping list: one "Name — qty unit" per line. */
-export function formatShoppingListText(lines: ShoppingListLine[]): string {
-  return lines.map((l) => `${l.name} — ${l.quantity}${l.unit ? ` ${l.unit}` : ''}`).join('\n')
+export function formatShoppingListText(lines: ShoppingListLine[], locale?: string): string {
+  return lines.map((l) => `${l.name} — ${formatQuantity(l.quantity, locale)}${l.unit ? ` ${l.unit}` : ''}`).join('\n')
 }
