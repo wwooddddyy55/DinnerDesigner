@@ -28,6 +28,9 @@ export function PersonRow({ person, index, autoFocus = false, onChange, onRemove
         value={person.name}
         onChange={(e) => onChange({ ...person, name: e.target.value })}
         placeholder="Name"
+        autoCapitalize="words"
+        autoComplete="off"
+        enterKeyHint="done"
         aria-label={`Name of person ${index + 1}`}
       />
       <button

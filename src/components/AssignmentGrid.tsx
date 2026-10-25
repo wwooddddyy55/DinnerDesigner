@@ -3,7 +3,7 @@ import { canPlaceEntryInCell, findCellAssignments, isCellAvailable } from '../li
 import { formatDayHeader } from '../lib/date'
 import { cellDroppableId } from '../lib/dragDrop'
 import { MEAL_TYPE_LABELS } from '../types'
-import type { MealType, PlannedMealEntry, WeeklyPlan } from '../types'
+import type { MealType, WeeklyPlan } from '../types'
 import { AssignmentCell } from './AssignmentCell'
 import styles from './AssignmentGrid.module.css'
 
@@ -32,8 +32,8 @@ export function AssignmentGrid({
   const draggingEntry = plan.plannedMeals.find((e) => e.id === draggingEntryId)
   const selectedEntry = plan.plannedMeals.find((e) => e.id === selectedEntryId)
 
-  function canDrop(occupants: { entry: PlannedMealEntry }[], mealType: MealType): boolean {
-    return canPlaceEntryInCell(draggingEntry, mealType, occupants)
+  function canDrop(occupants: ReturnType<typeof findCellAssignments>, mealType: MealType): boolean {
+    return canPlaceEntryInCell(draggingEntry, mealType, occupants, plan)
   }
 
   return (
@@ -64,7 +64,7 @@ export function AssignmentGrid({
                         day={day}
                         available={available}
                         droppable={canDrop(occupants, type)}
-                        tapEligible={!draggingEntry && canPlaceEntryInCell(selectedEntry, type, occupants)}
+                        tapEligible={!draggingEntry && canPlaceEntryInCell(selectedEntry, type, occupants, plan)}
                         placingName={selectedEntry?.name}
                         cellLabel={`${person.name}, ${MEAL_TYPE_LABELS[type]}, ${formatDayHeader(plan.weekStartDate, day)}`}
                         occupants={occupants}

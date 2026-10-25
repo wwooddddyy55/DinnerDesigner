@@ -6,13 +6,6 @@
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
   align-items: center;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-}
-
-.bar::-webkit-scrollbar {
-  display: none;
 }
 
 .brand {
@@ -24,24 +17,86 @@
   white-space: nowrap;
 }
 
+.tabs {
+  display: flex;
+  gap: var(--space-2);
+  min-width: 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.tabs::-webkit-scrollbar {
+  display: none;
+}
+
 .tab {
   border: none;
   background: transparent;
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-sm);
+  font-size: 0.95rem;
   font-weight: 600;
   color: var(--color-text-muted);
   flex-shrink: 0;
   white-space: nowrap;
 }
 
+.shortLabel {
+  display: none;
+}
+
+/* Phones: brand, sync and theme on the first row; the five tabs on a second
+   row of their own, sharing its width with short labels, so every screen is
+   visible and thumb-sized without sideways scrolling. */
 @media (max-width: 700px) {
   .bar {
-    padding: var(--space-3) var(--space-4);
+    flex-wrap: wrap;
+    padding: var(--space-2) var(--space-3) 0;
+    row-gap: 0;
+  }
+
+  .brand {
+    margin-right: 0;
+  }
+
+  .tabs {
+    order: 1;
+    flex-basis: 100%;
+    gap: 0;
   }
 
   .tab {
-    padding: var(--space-2);
+    flex: 1 0 auto;
+    min-height: 48px;
+    padding: var(--space-2) var(--space-1);
+    border-radius: 0;
+    border-bottom: 3px solid transparent;
+  }
+
+  .longLabel {
+    display: none;
+  }
+
+  .shortLabel {
+    display: inline;
+  }
+
+  .tabActive {
+    background: transparent;
+    border-bottom-color: var(--color-primary);
+  }
+}
+
+@media (pointer: coarse) {
+  .tab,
+  .themeButton,
+  .syncStatus {
+    min-height: 44px;
+  }
+
+  .themeButton {
+    min-width: 44px;
   }
 }
 
@@ -62,8 +117,11 @@
 .syncStatus {
   flex-shrink: 0;
   white-space: nowrap;
+  font: inherit;
   font-size: 0.8rem;
   color: var(--color-text-muted);
+  background: transparent;
+  border: none;
   padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-sm);
 }
@@ -94,6 +152,6 @@
 
 @media (max-width: 700px) {
   .planHint {
-    padding: var(--space-2) var(--space-4);
+    padding: var(--space-2) var(--space-3);
   }
 }

@@ -57,3 +57,14 @@
     align-self: center;
   }
 }
+
+@media (max-width: 700px), (pointer: coarse) {
+  .input,
+  .removeButton {
+    min-height: 44px;
+  }
+
+  .removeButton {
+    min-width: 44px;
+  }
+}

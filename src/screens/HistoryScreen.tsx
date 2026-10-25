@@ -52,8 +52,8 @@ export function HistoryScreen() {
               {staleness.map((meal) => (
                 <tr key={meal.mealId}>
                   <td>{meal.name}</td>
-                  <td>{formatWeekLabel(meal.lastServedDate)}</td>
-                  <td>{meal.timesServed}</td>
+                  <td data-label="Last served">{formatWeekLabel(meal.lastServedDate)}</td>
+                  <td data-label="Times served">{meal.timesServed}</td>
                 </tr>
               ))}
             </tbody>

@@ -20,7 +20,7 @@
   border-color: var(--color-chip-active-bg);
 }
 
-@media (max-width: 700px) {
+@media (max-width: 700px), (pointer: coarse) {
   .chip {
     min-height: 44px;
     display: inline-flex;

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { MealSearchBar } from './MealSearchBar'
 import { MealTypeFilterChips } from './MealTypeFilterChips'
 import { ProteinFilterChips } from './ProteinFilterChips'
@@ -27,6 +28,8 @@ interface MealPickerPanelProps {
   onClearMealTypeFilter: () => void
   onClearProteinFilter: () => void
   onAdd: (meal: Meal) => void
+  /** Phone layout: filter chips fold away behind a "Filters (N)" toggle. */
+  compact?: boolean
 }
 
 export function MealPickerPanel({
@@ -46,7 +49,11 @@ export function MealPickerPanel({
   onClearMealTypeFilter,
   onClearProteinFilter,
   onAdd,
+  compact = false,
 }: MealPickerPanelProps) {
+  const [showFilters, setShowFilters] = useState(false)
+  const activeFilters = mealTypeFilter.length + proteinFilter.length
+  const filtersVisible = !compact || showFilters
   return (
     <div>
       <h3>Choose meals</h3>
@@ -58,13 +65,27 @@ export function MealPickerPanel({
         shownCount={availableMeals.length}
         totalCount={eligibleCount}
       />
-      <MealTypeFilterChips
-        types={plan.selectedMealTypes}
-        selected={mealTypeFilter}
-        onToggle={onToggleMealType}
-        onClear={onClearMealTypeFilter}
-      />
-      <ProteinFilterChips selected={proteinFilter} onToggle={onToggleProtein} onClear={onClearProteinFilter} />
+      {compact && (
+        <button
+          type="button"
+          className={`button buttonSecondary ${styles.filtersToggle}`}
+          aria-expanded={showFilters}
+          onClick={() => setShowFilters((v) => !v)}
+        >
+          {showFilters ? 'Hide filters' : `Filters${activeFilters > 0 ? ` (${activeFilters})` : ''}`}
+        </button>
+      )}
+      {filtersVisible && (
+        <>
+          <MealTypeFilterChips
+            types={plan.selectedMealTypes}
+            selected={mealTypeFilter}
+            onToggle={onToggleMealType}
+            onClear={onClearMealTypeFilter}
+          />
+          <ProteinFilterChips selected={proteinFilter} onToggle={onToggleProtein} onClear={onClearProteinFilter} />
+        </>
+      )}
       <div className={styles.pickerList}>
         {eligibleCount === 0 && (
           <p className={styles.emptyState}>

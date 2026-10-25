@@ -7,11 +7,14 @@ import {
   findCellAssignments,
   formatServingCount,
   getAssignmentFraction,
+  getDayStatus,
   getEntryConsumedServings,
+  getEntryRemaining,
   getMealTypePicked,
   getMealTypeTarget,
   getPersonMealTypeTarget,
   getShoppingList,
+  getTodayDayIndex,
   isEntryFullyPlaced,
 } from './calculations'
 
@@ -374,6 +377,70 @@ describe('canPlaceEntryInCell', () => {
     const entry = makeEntry({ id: 'e1', mealTypes: ['dinner'] })
     const other = makeEntry({ id: 'e2' })
     expect(canPlaceEntryInCell(entry, 'dinner', [{ entry: other }])).toBe(true)
+  })
+})
+
+describe('canPlaceEntryInCell with a plan (capacity)', () => {
+  it('rejects a fully placed batch', () => {
+    const entry = makeEntry({
+      id: 'e1',
+      totalServings: 1,
+      assignments: [makeAssignment({ id: 'a1', day: 0 })],
+    })
+    const plan = makePlan({ people: [makePerson()], plannedMeals: [entry] })
+    expect(canPlaceEntryInCell(entry, 'dinner', findCellAssignments(plan, 'person-1', 1, 'dinner'), plan)).toBe(
+      false,
+    )
+  })
+
+  it('accepts a shared cell when only part of a serving is left', () => {
+    // 0.5 left: a solo cell (1 serving) won't fit, a 50/50 shared cell will.
+    const entry = makeEntry({ id: 'e1', totalServings: 1, leftoverServingsUsed: 0.5 })
+    const other = makeEntry({ id: 'e2', assignments: [makeAssignment({ id: 'b1', day: 1 })] })
+    const plan = makePlan({ people: [makePerson()], plannedMeals: [entry, other] })
+    expect(canPlaceEntryInCell(entry, 'dinner', findCellAssignments(plan, 'person-1', 0, 'dinner'), plan)).toBe(
+      false,
+    )
+    expect(canPlaceEntryInCell(entry, 'dinner', findCellAssignments(plan, 'person-1', 1, 'dinner'), plan)).toBe(
+      true,
+    )
+  })
+})
+
+describe('getEntryRemaining', () => {
+  it('counts unplaced servings, never below zero', () => {
+    const entry = makeEntry({ totalServings: 3, assignments: [makeAssignment({ day: 0 })] })
+    const plan = makePlan({ people: [makePerson()], plannedMeals: [entry] })
+    expect(getEntryRemaining(plan, entry)).toBe(2)
+    const over = makeEntry({ totalServings: 0.5, assignments: [makeAssignment({ day: 0 })] })
+    expect(getEntryRemaining(makePlan({ people: [makePerson()], plannedMeals: [over] }), over)).toBe(0)
+  })
+})
+
+describe('getDayStatus', () => {
+  it('counts available, open and eligible cells for a day', () => {
+    const alex = makePerson({ id: 'p1', availability: { dinner: daysTrue(7) } })
+    const sam = makePerson({ id: 'p2', availability: { dinner: daysTrue(0) } })
+    const placed = makeEntry({ id: 'e1', assignments: [makeAssignment({ personId: 'p1', day: 0 })] })
+    const fresh = makeEntry({ id: 'e2' })
+    const plan = makePlan({ people: [alex, sam], plannedMeals: [placed, fresh] })
+    expect(getDayStatus(plan, 0)).toEqual({ available: 1, open: 0, eligible: 0 })
+    expect(getDayStatus(plan, 1)).toEqual({ available: 1, open: 1, eligible: 0 })
+    // e2 can join e1's cell on day 0, or take the empty one on day 1.
+    expect(getDayStatus(plan, 0, fresh).eligible).toBe(1)
+    expect(getDayStatus(plan, 1, fresh).eligible).toBe(1)
+  })
+})
+
+describe('getTodayDayIndex', () => {
+  it('finds today inside the plan week, across a month boundary', () => {
+    expect(getTodayDayIndex('2026-08-28', '2026-08-28')).toBe(0)
+    expect(getTodayDayIndex('2026-08-28', '2026-09-03')).toBe(6)
+  })
+
+  it('is undefined outside the week', () => {
+    expect(getTodayDayIndex('2026-08-28', '2026-08-27')).toBeUndefined()
+    expect(getTodayDayIndex('2026-08-28', '2026-09-04')).toBeUndefined()
   })
 })
 

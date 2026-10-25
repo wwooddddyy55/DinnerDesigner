@@ -1,5 +1,5 @@
 .page {
-  padding: var(--space-5);
+  padding: var(--page-pad);
   max-width: 1200px;
   margin: 0 auto;
   display: flex;
@@ -43,6 +43,7 @@
   position: sticky;
   top: var(--space-4);
   max-height: calc(100vh - var(--space-6));
+  max-height: calc(100dvh - var(--space-6));
   overflow-y: auto;
   padding-right: var(--space-2);
 }
@@ -51,12 +52,129 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+  /* Let the assignment grid scroll inside its own box instead of widening
+     the whole page (a grid item's default min-width is its content's). */
+  min-width: 0;
+}
+
+.mobileHeader {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  margin-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .mobileTabs {
   display: flex;
   gap: var(--space-2);
-  margin-bottom: var(--space-3);
+}
+
+.tabCount {
+  display: inline-block;
+  margin-left: var(--space-1);
+  min-width: 1.4em;
+  padding: 0 var(--space-1);
+  border-radius: 999px;
+  background: var(--color-primary);
+  color: var(--color-primary-contrast);
+  font-size: 0.75rem;
+}
+
+/* One-line progress for every meal type; tap to show the full bars. */
+.progressSummary {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  border: none;
+  background: transparent;
+  color: var(--color-text);
+  padding: var(--space-1) 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: left;
+  min-height: 32px;
+}
+
+.placingStrip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-chip-bg);
+  border: 1px solid var(--color-primary);
+}
+
+.placingText {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.9rem;
+}
+
+.entryChips {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.entryChips::-webkit-scrollbar {
+  display: none;
+}
+
+.entryChip {
+  flex-shrink: 0;
+  white-space: nowrap;
+  min-height: 44px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-radius: 999px;
+  padding: 0 var(--space-3);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.entryChipActive {
+  background: var(--color-chip-active-bg);
+  color: var(--color-chip-active-text);
+  border-color: var(--color-chip-active-bg);
+}
+
+.entryChipCount {
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+.pickerToggleRow {
+  margin: var(--space-3) 0;
+}
+
+.pickerToggleRow > :global(.button) {
+  width: 100%;
+}
+
+.filtersToggle {
+  margin-bottom: var(--space-2);
+}
+
+.optionsToggle {
+  align-self: flex-start;
+  border: none;
+  background: transparent;
+  color: var(--color-primary);
+  font-size: 0.8rem;
+  padding: var(--space-1) 0;
+  min-height: 32px;
+  text-decoration: underline;
+}
+
+.overCapacityHint {
+  font-size: 0.8rem;
+  color: var(--color-danger);
 }
 
 .mobileTab {
@@ -218,37 +336,35 @@
   border-radius: var(--radius-sm);
 }
 
-@media (max-width: 700px) {
-  .pickerRow,
+/* The phone layout (same media query list as TOUCH_LAYOUT_QUERY in
+   lib/useMediaQuery.ts). Picked cards have no drag handle there. */
+@media (max-width: 700px), (pointer: coarse) and (max-height: 500px) {
   .pickedRow {
     display: grid;
-    grid-template-columns: auto 1fr;
-    grid-template-areas:
-      'handle info'
-      'action action';
-    align-items: start;
-  }
-
-  .pickerRow {
     grid-template-columns: 1fr;
     grid-template-areas:
       'info'
       'action';
-  }
-
-  .dragHandle {
-    grid-area: handle;
+    align-items: start;
   }
 
   .pickerInfo {
     grid-area: info;
   }
 
-  .pickerRow > :global(.button),
   .pickedRow > .cardActions {
     grid-area: action;
     width: 100%;
     justify-content: center;
+  }
+
+  /* Picker rows keep a compact Add button beside the meal. */
+  .pickerRow {
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .pickerRow > :global(.button) {
+    flex-shrink: 0;
   }
 
   .cardActions {

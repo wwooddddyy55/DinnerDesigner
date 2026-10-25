@@ -1,5 +1,5 @@
 .page {
-  padding: var(--space-5);
+  padding: var(--page-pad);
   max-width: 640px;
   margin: 0 auto;
   display: flex;
@@ -28,7 +28,7 @@
 .quantity {
   color: var(--color-text-muted);
   font-size: 0.9rem;
-  margin-left: auto;
+  white-space: nowrap;
 }
 
 .emptyState {
@@ -108,5 +108,40 @@
   .toggleLabel input[type='checkbox'] {
     width: 22px;
     height: 22px;
+  }
+}
+
+/* Toolbar + progress stay pinned while scrolling the list in the shop. */
+.stickyTools {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+}
+
+.itemLine {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0 var(--space-2);
+}
+
+.itemName {
+  font-weight: 600;
+}
+
+.itemText {
+  flex: 1;
+}
+
+/* Rows big enough to hit one-handed with a basket in the other. */
+@media (max-width: 700px), (pointer: coarse) {
+  .row {
+    min-height: 56px;
+    padding: var(--space-3);
+  }
+
+  .toggleLabel {
+    min-height: 44px;
   }
 }

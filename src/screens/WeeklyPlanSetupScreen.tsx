@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import type { ChangeEvent } from 'react'
+import { Collapsible } from '../components/Collapsible'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { DayPlannerGrid } from '../components/DayPlannerGrid'
 import type { View } from '../components/NavBar'
@@ -7,6 +8,7 @@ import { PersonRow } from '../components/PersonRow'
 import { getMealTypeTarget } from '../lib/calculations'
 import { addDays, toIsoDate, formatWeekLabel } from '../lib/date'
 import { buildExport, downloadExport, parseImport } from '../lib/exportImport'
+import { openSection } from '../lib/openSection'
 import { dismissUndo, offerUndo } from '../lib/undo'
 import { useAppStore } from '../store/useAppStore'
 import { MEAL_TYPES, MEAL_TYPE_LABELS } from '../types'
@@ -140,21 +142,36 @@ export function WeeklyPlanSetupScreen({ onNavigate }: WeeklyPlanSetupScreenProps
     })
   }
 
+  // Each unfinished step jumps to where it's done.
   const checklist = activePlan
     ? [
         { label: 'Week started', done: true },
-        { label: 'Meal types chosen', done: activePlan.selectedMealTypes.length > 0 },
-        { label: 'People added', done: activePlan.people.length > 0 },
+        {
+          label: 'Meal types chosen',
+          done: activePlan.selectedMealTypes.length > 0,
+          action: () => openSection('setup-meal-types'),
+          enabled: true,
+        },
+        {
+          label: 'People added',
+          done: activePlan.people.length > 0,
+          action: () => openSection('setup-people'),
+          enabled: activePlan.selectedMealTypes.length > 0,
+        },
         {
           label: 'Meals picked',
           done: activePlan.plannedMeals.length > 0,
           action: () => onNavigate('plan'),
+          enabled: activePlan.selectedMealTypes.length > 0 && activePlan.people.length > 0,
         },
       ]
     : []
   const readyForPlanning = Boolean(
     activePlan && activePlan.selectedMealTypes.length > 0 && activePlan.people.length > 0,
   )
+  // Once a week is being edited, starting another one is the less common
+  // task, so that box starts folded away (as does Data).
+  const hasActiveWeek = Boolean(activePlan)
 
   return (
     <div className={styles.page}>
@@ -187,58 +204,64 @@ export function WeeklyPlanSetupScreen({ onNavigate }: WeeklyPlanSetupScreenProps
           )}
         </div>
 
-        <div className={styles.newWeekBox}>
-          <div className={styles.newWeekRow}>
-            <label className={styles.fieldLabel} htmlFor="new-week-date">
-              New week starting
-            </label>
-            <input
-              id="new-week-date"
-              className={styles.dateInput}
-              type="date"
-              value={newWeekDate}
-              onChange={(e) => setNewWeekDate(e.target.value)}
-            />
-            <button type="button" className="button" onClick={handleStartNewWeek} disabled={!validNewWeekDate}>
-              Start new week
-            </button>
-          </div>
-          {validNewWeekDate && (
-            <p className={styles.weekRange}>
-              {formatWeekLabel(newWeekDate)} – {formatWeekLabel(addDays(newWeekDate, 6))}
-              {duplicateWeek && ' · you already have a week starting on this date'}
-            </p>
-          )}
-          {mostRecentPlan && (
-            <div className={styles.copyOptions}>
-              <label className={styles.checkboxLabel}>
-                <input
-                  type="checkbox"
-                  checked={copyFromLast}
-                  onChange={(e) => setCopyFromLast(e.target.checked)}
-                />
-                Copy people, availability and meal types from the week of{' '}
-                {formatWeekLabel(mostRecentPlan.weekStartDate)}
+        <Collapsible
+          id="setup-new-week"
+          title={<h3 className={styles.collapsibleTitle}>Start a new week</h3>}
+          defaultOpen={!hasActiveWeek}
+        >
+          <div className={styles.newWeekBox}>
+            <div className={styles.newWeekRow}>
+              <label className={styles.fieldLabel} htmlFor="new-week-date">
+                New week starting
               </label>
-              {copyFromLast && (
-                <label className={`${styles.checkboxLabel} ${styles.nestedOption}`}>
-                  <input type="checkbox" checked={copyMeals} onChange={(e) => setCopyMeals(e.target.checked)} />
-                  Also copy its picked meals ({mostRecentPlan.plannedMeals.length})
-                </label>
-              )}
-              {copyFromLast && copyMeals && (
-                <label className={`${styles.checkboxLabel} ${styles.nestedOption} ${styles.nestedOption2}`}>
+              <input
+                id="new-week-date"
+                className={styles.dateInput}
+                type="date"
+                value={newWeekDate}
+                onChange={(e) => setNewWeekDate(e.target.value)}
+              />
+              <button type="button" className="button" onClick={handleStartNewWeek} disabled={!validNewWeekDate}>
+                Start new week
+              </button>
+            </div>
+            {validNewWeekDate && (
+              <p className={styles.weekRange}>
+                {formatWeekLabel(newWeekDate)} – {formatWeekLabel(addDays(newWeekDate, 6))}
+                {duplicateWeek && ' · you already have a week starting on this date'}
+              </p>
+            )}
+            {mostRecentPlan && (
+              <div className={styles.copyOptions}>
+                <label className={styles.checkboxLabel}>
                   <input
                     type="checkbox"
-                    checked={copyPlacements}
-                    onChange={(e) => setCopyPlacements(e.target.checked)}
+                    checked={copyFromLast}
+                    onChange={(e) => setCopyFromLast(e.target.checked)}
                   />
-                  …and where they were placed on the grid
+                  Copy people, availability and meal types from the week of{' '}
+                  {formatWeekLabel(mostRecentPlan.weekStartDate)}
                 </label>
-              )}
-            </div>
-          )}
-        </div>
+                {copyFromLast && (
+                  <label className={`${styles.checkboxLabel} ${styles.nestedOption}`}>
+                    <input type="checkbox" checked={copyMeals} onChange={(e) => setCopyMeals(e.target.checked)} />
+                    Also copy its picked meals ({mostRecentPlan.plannedMeals.length})
+                  </label>
+                )}
+                {copyFromLast && copyMeals && (
+                  <label className={`${styles.checkboxLabel} ${styles.nestedOption} ${styles.nestedOption2}`}>
+                    <input
+                      type="checkbox"
+                      checked={copyPlacements}
+                      onChange={(e) => setCopyPlacements(e.target.checked)}
+                    />
+                    …and where they were placed on the grid
+                  </label>
+                )}
+              </div>
+            )}
+          </div>
+        </Collapsible>
       </section>
 
       {activePlan ? (
@@ -248,7 +271,7 @@ export function WeeklyPlanSetupScreen({ onNavigate }: WeeklyPlanSetupScreenProps
               <li key={step.label} className={step.done ? styles.stepDone : styles.stepTodo}>
                 <span aria-hidden="true">{step.done ? '✓' : '○'}</span>{' '}
                 {step.action && !step.done ? (
-                  <button type="button" className={styles.stepLink} onClick={step.action} disabled={!readyForPlanning}>
+                  <button type="button" className={styles.stepLink} onClick={step.action} disabled={!step.enabled}>
                     {step.label}
                   </button>
                 ) : (
@@ -259,8 +282,7 @@ export function WeeklyPlanSetupScreen({ onNavigate }: WeeklyPlanSetupScreenProps
             ))}
           </ol>
 
-          <section className={styles.section}>
-            <h3>Meal types this week</h3>
+          <Collapsible id="setup-meal-types" title={<h3 className={styles.collapsibleTitle}>Meal types this week</h3>}>
             <div className={styles.checkboxRow}>
               {MEAL_TYPES.map((type) => (
                 <label className={styles.checkboxLabel} key={type}>
@@ -281,11 +303,10 @@ export function WeeklyPlanSetupScreen({ onNavigate }: WeeklyPlanSetupScreenProps
             {activePlan.selectedMealTypes.length === 0 && (
               <p>Tick at least one meal type to add people and plan their week.</p>
             )}
-          </section>
+          </Collapsible>
 
           {activePlan.selectedMealTypes.length > 0 && (
-            <section className={styles.section}>
-              <h3>People</h3>
+            <Collapsible id="setup-people" title={<h3 className={styles.collapsibleTitle}>People</h3>}>
               <p>Add each person eating this week.</p>
               {activePlan.people.map((person, index) => (
                 <PersonRow
@@ -304,12 +325,11 @@ export function WeeklyPlanSetupScreen({ onNavigate }: WeeklyPlanSetupScreenProps
               >
                 + Add person
               </button>
-            </section>
+            </Collapsible>
           )}
 
           {activePlan.selectedMealTypes.length > 0 && activePlan.people.length > 0 && (
-            <section className={styles.section}>
-              <h3>Day planner</h3>
+            <Collapsible id="setup-day-planner" title={<h3 className={styles.collapsibleTitle}>Day planner</h3>}>
               <p>
                 Mark each person available or unavailable for each meal type on each day. A
                 person's weekly target for a meal type is however many days they're marked
@@ -321,12 +341,11 @@ export function WeeklyPlanSetupScreen({ onNavigate }: WeeklyPlanSetupScreenProps
                   setPersonAvailability(activePlan.id, personId, type, day, available)
                 }
               />
-            </section>
+            </Collapsible>
           )}
 
           {activePlan.selectedMealTypes.length > 0 && (
-            <section className={styles.section}>
-              <h3>Servings targets</h3>
+            <Collapsible id="setup-targets" title={<h3 className={styles.collapsibleTitle}>Servings targets</h3>}>
               <div className={styles.summaryGrid}>
                 {activePlan.selectedMealTypes.map((type) => (
                   <div className={`card ${styles.summaryTile}`} key={type}>
@@ -337,7 +356,7 @@ export function WeeklyPlanSetupScreen({ onNavigate }: WeeklyPlanSetupScreenProps
                   </div>
                 ))}
               </div>
-            </section>
+            </Collapsible>
           )}
 
           {readyForPlanning && (
@@ -358,8 +377,11 @@ export function WeeklyPlanSetupScreen({ onNavigate }: WeeklyPlanSetupScreenProps
         </div>
       )}
 
-      <section className={styles.section}>
-        <h3>Data</h3>
+      <Collapsible
+        id="setup-data"
+        title={<h3 className={styles.collapsibleTitle}>Data</h3>}
+        defaultOpen={!hasActiveWeek}
+      >
         <p>Export your meals and plans to a JSON file, or import a previous export.</p>
         <div className={styles.dataRow}>
           <button type="button" className="button buttonSecondary" onClick={handleExport}>
@@ -381,7 +403,7 @@ export function WeeklyPlanSetupScreen({ onNavigate }: WeeklyPlanSetupScreenProps
             {importError}
           </p>
         )}
-      </section>
+      </Collapsible>
 
       {pendingImport && (
         <ConfirmDialog
