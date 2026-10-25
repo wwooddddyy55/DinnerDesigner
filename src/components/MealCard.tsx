@@ -9,9 +9,11 @@ interface MealCardProps {
   onEdit?: () => void
   onDelete?: () => void
   actionSlot?: ReactNode
+  /** e.g. "Last picked: 3 wks ago", from the plan history. */
+  lastServedLabel?: string
 }
 
-export function MealCard({ meal, onEdit, onDelete, actionSlot }: MealCardProps) {
+export function MealCard({ meal, onEdit, onDelete, actionSlot, lastServedLabel }: MealCardProps) {
   // Re-checked at render time too, as defense in depth for data that predates
   // (or bypassed) the import/sync normalization.
   const sourceUrl = toSafeHttpUrl(meal.sourceUrl)
@@ -29,6 +31,7 @@ export function MealCard({ meal, onEdit, onDelete, actionSlot }: MealCardProps) 
             ))}
             <span className="badge">{meal.servingsPerBatch} servings/batch</span>
           </div>
+          {lastServedLabel && <div className={styles.lastServed}>{lastServedLabel}</div>}
         </div>
       </div>
       {meal.ingredients.length > 0 && (
@@ -48,12 +51,12 @@ export function MealCard({ meal, onEdit, onDelete, actionSlot }: MealCardProps) 
       )}
       <div className={styles.actions}>
         {onEdit && (
-          <button type="button" className="button buttonSecondary" onClick={onEdit}>
+          <button type="button" className="button buttonSecondary" onClick={onEdit} aria-label={`Edit ${meal.name}`}>
             Edit
           </button>
         )}
         {onDelete && (
-          <button type="button" className="button buttonDanger" onClick={onDelete}>
+          <button type="button" className="button buttonDanger" onClick={onDelete} aria-label={`Delete ${meal.name}`}>
             Delete
           </button>
         )}

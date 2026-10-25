@@ -1,4 +1,5 @@
 import { useDroppable } from '@dnd-kit/core'
+import type { KeyboardEvent } from 'react'
 import {
   canSetAssignmentWeight,
   getAssignmentFraction,
@@ -27,6 +28,11 @@ export interface AssignmentCellProps {
   onReweight: (entryId: string, assignmentId: string, weight: number) => void
   onTapPlace: (personId: string, mealType: MealType, day: number) => void
   plan: WeeklyPlan
+  /** Human-readable cell location, e.g. "Alex, Dinner, Mon 9/1", for screen
+   * readers (the visual grid conveys it by position only). */
+  cellLabel?: string
+  /** Name of the meal currently selected for placing, for the tap target's label. */
+  placingName?: string
 }
 
 export function AssignmentCell({
@@ -42,6 +48,8 @@ export function AssignmentCell({
   onReweight,
   onTapPlace,
   plan,
+  cellLabel,
+  placingName,
 }: AssignmentCellProps) {
   const { isOver, setNodeRef } = useDroppable({
     id: dropId,
@@ -49,11 +57,37 @@ export function AssignmentCell({
   })
 
   if (!available) {
-    return <div className={`${styles.cell} ${styles.cellDisabled}`} aria-disabled="true" title="Not available" />
+    return (
+      <div
+        className={`${styles.cell} ${styles.cellDisabled}`}
+        aria-disabled="true"
+        title="Not available"
+        aria-label={cellLabel ? `${cellLabel}: not available` : 'Not available'}
+        role="img"
+      >
+        <span className={styles.unavailableText}>—</span>
+      </div>
+    )
   }
 
   const canTap = tapEligible
   const handleTap = canTap ? () => onTapPlace(personId, mealType, day) : undefined
+  // Tap targets are real keyboard-operable buttons: focusable, activated by
+  // Enter/Space, and labelled with where the meal will go.
+  const tapProps = canTap
+    ? {
+        role: 'button' as const,
+        tabIndex: 0,
+        'aria-label': `Place ${placingName ?? 'selected meal'}${cellLabel ? ` on ${cellLabel}` : ''}`,
+        onKeyDown: (e: KeyboardEvent<HTMLDivElement>) => {
+          if (e.target !== e.currentTarget) return
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            onTapPlace(personId, mealType, day)
+          }
+        },
+      }
+    : {}
 
   if (occupants.length > 0) {
     const occupantAssignments = occupants.map((o) => o.assignment)
@@ -62,7 +96,7 @@ export function AssignmentCell({
         ref={setNodeRef}
         className={`${styles.cell} ${styles.cellFilled} ${droppable && isOver ? styles.cellOver : ''} ${canTap ? styles.cellTapEligible : ''}`}
         onClick={handleTap}
-        role={canTap ? 'button' : undefined}
+        {...tapProps}
       >
         {occupants.map(({ entry, assignment }) => {
           const fraction = getAssignmentFraction(assignment, occupantAssignments)
@@ -129,7 +163,10 @@ export function AssignmentCell({
       ref={setNodeRef}
       className={`${styles.cell} ${styles.cellEmpty} ${droppable && isOver ? styles.cellOver : ''} ${canTap ? styles.cellTapEligible : ''}`}
       onClick={handleTap}
-      role={canTap ? 'button' : undefined}
-    />
+      aria-label={canTap ? undefined : cellLabel ? `${cellLabel}: empty` : undefined}
+      {...tapProps}
+    >
+      {canTap && <span className={styles.tapHint}>+ Place here</span>}
+    </div>
   )
 }

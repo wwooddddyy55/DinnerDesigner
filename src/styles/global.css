@@ -3,17 +3,21 @@
   --color-surface: #ffffff;
   --color-border: #e2ded8;
   --color-text: #2b2622;
-  --color-text-muted: #756b62;
+  --color-text-muted: #6b6159;
   --color-primary: #b5502f;
   --color-primary-hover: #9a4127;
   --color-primary-contrast: #ffffff;
   --color-danger: #b3261e;
-  --color-success: #3f7d4f;
+  --color-success: #376e45;
   --color-success-bg: #e6f2e8;
   --color-warning-bg: #fdf1e0;
   --color-chip-bg: #efe9e3;
   --color-chip-active-bg: #b5502f;
   --color-chip-active-text: #ffffff;
+  --color-danger-bg: #fbeceb;
+  --color-toast-bg: #2b2622;
+  --color-toast-text: #f7f5f2;
+  --color-toast-action: #f0a487;
 
   --radius-sm: 6px;
   --radius-md: 10px;
@@ -27,6 +31,57 @@
 
   color-scheme: light;
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Dark theme: follows the OS/browser unless the user picked light/dark in the
+   NavBar (stored as data-theme on <html> — see src/lib/theme.ts). Both blocks
+   must stay identical. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --color-bg: #1c1917;
+    --color-surface: #26221f;
+    --color-border: #3d3732;
+    --color-text: #eee8e2;
+    --color-text-muted: #b3a89e;
+    --color-primary: #e07a55;
+    --color-primary-hover: #ea8f6d;
+    --color-primary-contrast: #1c1917;
+    --color-danger: #f28b82;
+    --color-success: #7cc48f;
+    --color-success-bg: #1f3326;
+    --color-warning-bg: #3a2c19;
+    --color-chip-bg: #34302b;
+    --color-chip-active-bg: #e07a55;
+    --color-chip-active-text: #1c1917;
+    --color-danger-bg: #3b2220;
+    --color-toast-bg: #eee8e2;
+    --color-toast-text: #1c1917;
+    --color-toast-action: #a8431f;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme='dark'] {
+  --color-bg: #1c1917;
+  --color-surface: #26221f;
+  --color-border: #3d3732;
+  --color-text: #eee8e2;
+  --color-text-muted: #b3a89e;
+  --color-primary: #e07a55;
+  --color-primary-hover: #ea8f6d;
+  --color-primary-contrast: #1c1917;
+  --color-danger: #f28b82;
+  --color-success: #7cc48f;
+  --color-success-bg: #1f3326;
+  --color-warning-bg: #3a2c19;
+  --color-chip-bg: #34302b;
+  --color-chip-active-bg: #e07a55;
+  --color-chip-active-text: #1c1917;
+  --color-danger-bg: #3b2220;
+  --color-toast-bg: #eee8e2;
+  --color-toast-text: #1c1917;
+  --color-toast-action: #a8431f;
+  color-scheme: dark;
 }
 
 * {
@@ -68,6 +123,18 @@ select,
 textarea {
   font-family: inherit;
   font-size: 1rem;
+  color: var(--color-text);
+  background-color: var(--color-surface);
+}
+
+input[type='checkbox'],
+input[type='radio'] {
+  accent-color: var(--color-primary);
+}
+
+.loadingState {
+  padding: var(--space-6);
+  text-align: center;
 }
 
 .card {
@@ -117,7 +184,7 @@ textarea {
 }
 
 .buttonDanger:hover {
-  background: #fbeceb;
+  background: var(--color-danger-bg);
 }
 
 @media (max-width: 700px) {
@@ -135,4 +202,17 @@ textarea {
   font-weight: 600;
   background: var(--color-chip-bg);
   color: var(--color-text);
+}
+
+/* Visually hidden, still read by screen readers. */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }

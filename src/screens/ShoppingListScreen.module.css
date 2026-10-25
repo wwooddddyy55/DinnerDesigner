@@ -34,3 +34,79 @@
 .emptyState {
   color: var(--color-text-muted);
 }
+
+.notice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  background: var(--color-warning-bg);
+}
+
+.notice p {
+  margin: 0;
+  color: var(--color-text);
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.progress {
+  font-weight: 600;
+  margin-right: auto;
+}
+
+.toggleLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: 0.9rem;
+}
+
+.progressTrack {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--color-chip-bg);
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: var(--color-success);
+  transition: width 0.2s ease;
+}
+
+.fallbackLabel {
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.fallbackText {
+  width: 100%;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-family: monospace;
+}
+
+.itemText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.sources {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+@media (pointer: coarse) {
+  .row input[type='checkbox'],
+  .toggleLabel input[type='checkbox'] {
+    width: 22px;
+    height: 22px;
+  }
+}

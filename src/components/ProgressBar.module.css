@@ -49,3 +49,9 @@
 .fillMet {
   background: var(--color-success);
 }
+
+.detail {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  margin-top: var(--space-1);
+}

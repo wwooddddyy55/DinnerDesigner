@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   DndContext,
   DragOverlay,
+  KeyboardSensor,
   PointerSensor,
   TouchSensor,
   useSensor,
@@ -13,13 +14,31 @@ import { AssignmentGrid } from '../components/AssignmentGrid'
 import { MealPickerPanel } from '../components/MealPickerPanel'
 import { PickedMealsPanel } from '../components/PickedMealsPanel'
 import { ProgressBar } from '../components/ProgressBar'
-import { getMealTypePicked, getMealTypeTarget } from '../lib/calculations'
+import { getMealTypePicked, getMealTypeTarget, getOpenCells } from '../lib/calculations'
+import { formatDayHeader } from '../lib/date'
 import { parseCellDroppableId, parsePickedEntryDraggableId } from '../lib/dragDrop'
+import { getMealServedIndex, matchesMealSearch, sortMeals } from '../lib/mealSearch'
+import type { MealSort } from '../lib/mealSearch'
+import { offerUndo } from '../lib/undo'
 import { useMediaQuery } from '../lib/useMediaQuery'
 import { useAppStore } from '../store/useAppStore'
 import { MEAL_TYPE_LABELS, proteinLabel } from '../types'
 import type { MealType, ProteinType, WeeklyPlan } from '../types'
 import styles from './PlanBuilderScreen.module.css'
+
+const MAX_OPEN_CELLS_LISTED = 4
+
+/** "Still empty: Alex Tue 9/2, Sam Thu 9/4 and 3 more" for a progress bar. */
+function describeOpenCells(plan: WeeklyPlan, mealType: MealType): string | undefined {
+  const open = getOpenCells(plan, mealType)
+  if (open.length === 0) return undefined
+  const multiplePeople = plan.people.length > 1
+  const listed = open
+    .slice(0, MAX_OPEN_CELLS_LISTED)
+    .map(({ person, day }) => `${multiplePeople ? `${person.name} ` : ''}${formatDayHeader(plan.weekStartDate, day)}`)
+  const more = open.length - listed.length
+  return `Still empty: ${listed.join(', ')}${more > 0 ? ` and ${more} more` : ''}`
+}
 
 interface PlanBuilderScreenProps {
   plan: WeeklyPlan
@@ -27,6 +46,8 @@ interface PlanBuilderScreenProps {
 
 export function PlanBuilderScreen({ plan }: PlanBuilderScreenProps) {
   const meals = useAppStore((s) => s.meals)
+  const plans = useAppStore((s) => s.plans)
+  const restorePlan = useAppStore((s) => s.restorePlan)
   const addPlannedMeal = useAppStore((s) => s.addPlannedMeal)
   const removePlannedMeal = useAppStore((s) => s.removePlannedMeal)
   const setEntryLeftover = useAppStore((s) => s.setEntryLeftover)
@@ -37,6 +58,14 @@ export function PlanBuilderScreen({ plan }: PlanBuilderScreenProps) {
 
   const [mealTypeFilter, setMealTypeFilter] = useState<MealType[]>([])
   const [proteinFilter, setProteinFilter] = useState<ProteinType[]>([])
+  const [query, setQuery] = useState('')
+  const [sort, setSort] = useState<MealSort>('least-recent')
+  // Staleness is measured against weeks *before* this one, so meals already
+  // picked into this week don't all read "This week" while you're picking.
+  const served = useMemo(
+    () => getMealServedIndex(plans.filter((p) => p.weekStartDate < plan.weekStartDate)),
+    [plans, plan.weekStartDate],
+  )
   const [draggingEntryId, setDraggingEntryId] = useState<string | null>(null)
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null)
   const [activeMobileTab, setActiveMobileTab] = useState<'pick' | 'assign'>('pick')
@@ -50,6 +79,10 @@ export function PlanBuilderScreen({ plan }: PlanBuilderScreenProps) {
     // Delay + tolerance lets a normal swipe still scroll the grid; only a
     // press-and-hold starts a drag, so touch scrolling isn't hijacked.
     useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 8 } }),
+    // Space/Enter on a card's drag handle picks it up, arrow keys move it,
+    // Space/Enter drops — what dnd-kit's built-in screen-reader instructions
+    // on the handle promise.
+    useSensor(KeyboardSensor),
   )
 
   function handleDragStart(event: DragStartEvent) {
@@ -79,8 +112,20 @@ export function PlanBuilderScreen({ plan }: PlanBuilderScreenProps) {
   }
 
   function handleRemove(entryId: string) {
+    const index = plan.plannedMeals.findIndex((e) => e.id === entryId)
+    const entry = plan.plannedMeals[index]
     removePlannedMeal(plan.id, entryId)
     setSelectedEntryId((prev) => (prev === entryId ? null : prev))
+    if (!entry) return
+    // Re-insert just this entry into the plan as it is *at undo time*, so any
+    // other edits made in the meantime survive the undo.
+    offerUndo(`Removed ${entry.name}.`, () => {
+      const current = useAppStore.getState().plans.find((p) => p.id === plan.id)
+      if (!current || current.plannedMeals.some((e) => e.id === entry.id)) return
+      const plannedMeals = [...current.plannedMeals]
+      plannedMeals.splice(Math.min(index, plannedMeals.length), 0, entry)
+      restorePlan({ ...current, plannedMeals })
+    })
   }
 
   if (plan.selectedMealTypes.length === 0) {
@@ -93,13 +138,17 @@ export function PlanBuilderScreen({ plan }: PlanBuilderScreenProps) {
     )
   }
 
-  const availableMeals = meals.filter((meal) => {
-    const eligibleTypes = meal.mealTypes.filter((t) => plan.selectedMealTypes.includes(t))
-    if (eligibleTypes.length === 0) return false
-    if (mealTypeFilter.length > 0 && !eligibleTypes.some((t) => mealTypeFilter.includes(t))) return false
-    if (proteinFilter.length > 0 && !proteinFilter.includes(meal.protein)) return false
-    return true
-  })
+  const eligibleMeals = meals.filter((meal) => meal.mealTypes.some((t) => plan.selectedMealTypes.includes(t)))
+  const availableMeals = sortMeals(
+    eligibleMeals.filter((meal) => {
+      const eligibleTypes = meal.mealTypes.filter((t) => plan.selectedMealTypes.includes(t))
+      if (mealTypeFilter.length > 0 && !eligibleTypes.some((t) => mealTypeFilter.includes(t))) return false
+      if (proteinFilter.length > 0 && !proteinFilter.includes(meal.protein)) return false
+      return matchesMealSearch(meal, query)
+    }),
+    sort,
+    served,
+  )
 
   function toggleMealType(type: MealType) {
     setMealTypeFilter((prev) => (prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]))
@@ -122,6 +171,7 @@ export function PlanBuilderScreen({ plan }: PlanBuilderScreenProps) {
             picked={getMealTypePicked(plan, type)}
             target={getMealTypeTarget(plan, type)}
             label={MEAL_TYPE_LABELS[type]}
+            detail={describeOpenCells(plan, type)}
           />
         ))}
       </div>
@@ -134,6 +184,17 @@ export function PlanBuilderScreen({ plan }: PlanBuilderScreenProps) {
     <MealPickerPanel
       plan={plan}
       availableMeals={availableMeals}
+      eligibleCount={eligibleMeals.length}
+      served={served}
+      query={query}
+      onQueryChange={setQuery}
+      sort={sort}
+      onSortChange={setSort}
+      onClearAll={() => {
+        setMealTypeFilter([])
+        setProteinFilter([])
+        setQuery('')
+      }}
       mealTypeFilter={mealTypeFilter}
       proteinFilter={proteinFilter}
       onToggleMealType={toggleMealType}
@@ -177,14 +238,36 @@ export function PlanBuilderScreen({ plan }: PlanBuilderScreenProps) {
 
               <div className={styles.assignmentSection}>
                 <h3>Assignment grid</h3>
-                <p className={styles.emptyState}>
-                  Drag a picked meal card onto a person's day/meal cell to place a serving. A cell can
-                  hold up to 4 combined items (e.g. lasagna + chips) — drop another card onto an
-                  already-filled cell to add it; each item's share of its own batch shrinks to fit
-                  evenly by default, adjustable with the +/− stepper. Click an item's × to remove it —
-                  the rest rebalance automatically.
-                </p>
-                <AssignmentGrid plan={plan} draggingEntryId={draggingEntryId} {...cellHandlers} />
+                <details className={styles.helpBox}>
+                  <summary>How placing works</summary>
+                  <ul>
+                    <li>
+                      Drag a picked meal's ⠿ handle onto a person's day/meal cell — or click <strong>Place</strong>{' '}
+                      on the card, then click a highlighted cell. Each placement uses one serving of that batch.
+                    </li>
+                    <li>
+                      Place the same batch on several cells to eat it as leftovers across the week (lunch and
+                      dinner are interchangeable).
+                    </li>
+                    <li>
+                      Put up to 4 items in one cell to combine them (e.g. lasagna + chips); each shares the cell
+                      evenly, adjustable with −/+. × removes an item and the rest rebalance.
+                    </li>
+                  </ul>
+                </details>
+                {selectedEntryId && (
+                  <p className={styles.placingHint} role="status">
+                    Placing <strong>{plan.plannedMeals.find((e) => e.id === selectedEntryId)?.name}</strong> — click a
+                    highlighted cell, or click <strong>Choosing cell…</strong> on its card to cancel.
+                  </p>
+                )}
+                <AssignmentGrid
+                  plan={plan}
+                  draggingEntryId={draggingEntryId}
+                  selectedEntryId={selectedEntryId}
+                  onTapPlace={handleTapPlace}
+                  {...cellHandlers}
+                />
               </div>
             </div>
           </div>

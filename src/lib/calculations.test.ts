@@ -168,7 +168,7 @@ describe('getMealTypePicked', () => {
     expect(getMealTypePicked(plan, 'lunch')).toBe(1)
     expect(getMealTypePicked(plan, 'dinner')).toBe(1)
     expect(getShoppingList(plan)).toEqual([
-      { key: 'pasta|box', name: 'Pasta', unit: 'box', quantity: 1 },
+      { key: 'pasta|box', name: 'Pasta', unit: 'box', quantity: 1, sources: ['Lasagna'] },
     ])
   })
 
@@ -445,6 +445,8 @@ describe('getShoppingList', () => {
         }),
       ],
     })
-    expect(getShoppingList(plan)).toEqual([{ key: 'beef|lb', name: 'Beef', unit: 'lb', quantity: 2 }])
+    expect(getShoppingList(plan)).toEqual([
+      { key: 'beef|lb', name: 'Beef', unit: 'lb', quantity: 2, sources: ['Lasagna'] },
+    ])
   })
 })

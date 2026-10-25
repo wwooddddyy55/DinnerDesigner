@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { NavBar } from './components/NavBar'
+import { UndoToast } from './components/UndoToast'
 import type { View } from './components/NavBar'
 import { HistoryScreen } from './screens/HistoryScreen'
 import { MealLibraryScreen } from './screens/MealLibraryScreen'
@@ -40,16 +41,23 @@ function App() {
     }
   }, [seedMealsIfNeeded])
 
-  if (!syncReady) return null
+  if (!syncReady) {
+    return (
+      <p className="loadingState" role="status">
+        Loading your meal plans…
+      </p>
+    )
+  }
 
   return (
     <div>
       <NavBar current={view} onNavigate={setView} hasActivePlan={Boolean(activePlanId)} />
-      {view === 'setup' && <WeeklyPlanSetupScreen />}
+      {view === 'setup' && <WeeklyPlanSetupScreen onNavigate={setView} />}
       {view === 'library' && <MealLibraryScreen />}
       {view === 'plan' && activePlan && <PlanBuilderScreen plan={activePlan} />}
       {view === 'shopping-list' && activePlan && <ShoppingListScreen plan={activePlan} />}
       {view === 'history' && <HistoryScreen />}
+      <UndoToast />
     </div>
   )
 }

@@ -42,3 +42,8 @@
 .emptyState {
   color: var(--color-text-muted);
 }
+
+.hint {
+  font-size: 0.85rem;
+  margin: 0;
+}

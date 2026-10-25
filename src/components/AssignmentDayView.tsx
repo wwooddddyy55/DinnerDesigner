@@ -30,7 +30,7 @@ export function AssignmentDayView({
 
   return (
     <div>
-      <div className={styles.dayTabs}>
+      <div className={styles.dayTabs} role="group" aria-label="Day to show">
         {DAYS.map((d) => (
           <button
             key={d}
@@ -62,6 +62,8 @@ export function AssignmentDayView({
                     available={available}
                     droppable={false}
                     tapEligible={canPlaceEntryInCell(selectedEntry, type, occupants)}
+                    placingName={selectedEntry?.name}
+                    cellLabel={`${person.name}, ${MEAL_TYPE_LABELS[type]}, ${formatDayHeader(plan.weekStartDate, day)}`}
                     occupants={occupants}
                     onClear={onClear}
                     onReweight={onReweight}

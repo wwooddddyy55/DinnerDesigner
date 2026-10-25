@@ -84,3 +84,70 @@
   gap: var(--space-2);
   align-items: center;
 }
+
+.newWeekBox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.fieldLabel {
+  font-weight: 600;
+}
+
+.weekRange {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.copyOptions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.nestedOption {
+  margin-left: var(--space-5);
+  font-weight: 400;
+}
+
+.nestedOption2 {
+  margin-left: calc(var(--space-5) * 2);
+}
+
+.checklist {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-3);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  font-size: 0.9rem;
+}
+
+.stepDone {
+  color: var(--color-success);
+  font-weight: 600;
+}
+
+.stepTodo {
+  color: var(--color-text-muted);
+}
+
+.stepLink {
+  border: none;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+
+.stepLink:disabled {
+  color: var(--color-text-muted);
+  text-decoration: none;
+  cursor: default;
+}

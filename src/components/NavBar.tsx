@@ -1,6 +1,7 @@
-import { useSyncExternalStore } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import { getSyncStatus, subscribeSyncStatus } from '../lib/sync'
 import type { SyncStatus } from '../lib/sync'
+import { THEME_LABELS, getThemePreference, nextThemePreference, setThemePreference } from '../lib/theme'
 import styles from './NavBar.module.css'
 
 export type View = 'setup' | 'library' | 'plan' | 'shopping-list' | 'history'
@@ -35,27 +36,36 @@ const SYNC_LABELS: Record<Exclude<SyncStatus, 'local-only'>, { text: string; tit
 export function NavBar({ current, onNavigate, hasActivePlan }: NavBarProps) {
   const syncStatus = useSyncExternalStore(subscribeSyncStatus, getSyncStatus)
   const syncLabel = syncStatus === 'local-only' ? null : SYNC_LABELS[syncStatus]
+  const [theme, setTheme] = useState(getThemePreference)
+
+  function cycleTheme() {
+    const next = nextThemePreference(theme)
+    setThemePreference(next)
+    setTheme(next)
+  }
+
   return (
-    <nav className={styles.bar}>
-      <span className={styles.brand}>DinnerDesigner</span>
-      {TABS.map((tab) => {
-        const disabled = tab.requiresPlan && !hasActivePlan
-        return (
-          <button
-            key={tab.id}
-            type="button"
-            className={`${styles.tab} ${current === tab.id ? styles.tabActive : ''}`}
-            onClick={() => onNavigate(tab.id)}
-            disabled={disabled}
-            title={disabled ? 'Start a weekly plan first' : undefined}
-          >
-            {tab.label}
-          </button>
-        )
-      })}
-      {syncLabel && (
-        <>
-          <span className={styles.spacer} />
+    <>
+      <nav className={styles.bar}>
+        <span className={styles.brand}>DinnerDesigner</span>
+        {TABS.map((tab) => {
+          const disabled = tab.requiresPlan && !hasActivePlan
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              className={`${styles.tab} ${current === tab.id ? styles.tabActive : ''}`}
+              aria-current={current === tab.id ? 'page' : undefined}
+              onClick={() => onNavigate(tab.id)}
+              disabled={disabled}
+              title={disabled ? 'Start a weekly plan first' : undefined}
+            >
+              {tab.label}
+            </button>
+          )
+        })}
+        <span className={styles.spacer} />
+        {syncLabel && (
           <span
             className={`${styles.syncStatus} ${syncStatus === 'error' || syncStatus === 'offline' ? styles.syncStatusWarn : ''}`}
             title={syncLabel.title}
@@ -63,8 +73,19 @@ export function NavBar({ current, onNavigate, hasActivePlan }: NavBarProps) {
           >
             {syncLabel.text}
           </span>
-        </>
+        )}
+        <button
+          type="button"
+          className={styles.themeButton}
+          onClick={cycleTheme}
+          title="Switch between automatic, light and dark theme"
+        >
+          {THEME_LABELS[theme]}
+        </button>
+      </nav>
+      {!hasActivePlan && (
+        <p className={styles.planHint}>Plan Builder and Shopping List unlock once you start a week on Weekly Setup.</p>
       )}
-    </nav>
+    </>
   )
 }

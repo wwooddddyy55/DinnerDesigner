@@ -10,14 +10,27 @@ import styles from './AssignmentGrid.module.css'
 interface AssignmentGridProps {
   plan: WeeklyPlan
   draggingEntryId: string | null
+  /** Entry chosen via a card's "Place" button: eligible cells become
+   * clickable/keyboard-activatable (the desktop/keyboard counterpart of
+   * mobile tap-to-place). */
+  selectedEntryId: string | null
+  onTapPlace: (personId: string, mealType: MealType, day: number) => void
   onClear: (entryId: string, assignmentId: string) => void
   onReweight: (entryId: string, assignmentId: string, weight: number) => void
 }
 
 const DAYS = [0, 1, 2, 3, 4, 5, 6]
 
-export function AssignmentGrid({ plan, draggingEntryId, onClear, onReweight }: AssignmentGridProps) {
+export function AssignmentGrid({
+  plan,
+  draggingEntryId,
+  selectedEntryId,
+  onTapPlace,
+  onClear,
+  onReweight,
+}: AssignmentGridProps) {
   const draggingEntry = plan.plannedMeals.find((e) => e.id === draggingEntryId)
+  const selectedEntry = plan.plannedMeals.find((e) => e.id === selectedEntryId)
 
   function canDrop(occupants: { entry: PlannedMealEntry }[], mealType: MealType): boolean {
     return canPlaceEntryInCell(draggingEntry, mealType, occupants)
@@ -51,11 +64,13 @@ export function AssignmentGrid({ plan, draggingEntryId, onClear, onReweight }: A
                         day={day}
                         available={available}
                         droppable={canDrop(occupants, type)}
-                        tapEligible={false}
+                        tapEligible={!draggingEntry && canPlaceEntryInCell(selectedEntry, type, occupants)}
+                        placingName={selectedEntry?.name}
+                        cellLabel={`${person.name}, ${MEAL_TYPE_LABELS[type]}, ${formatDayHeader(plan.weekStartDate, day)}`}
                         occupants={occupants}
                         onClear={onClear}
                         onReweight={onReweight}
-                        onTapPlace={() => {}}
+                        onTapPlace={onTapPlace}
                         plan={plan}
                       />
                     )

@@ -1,12 +1,25 @@
+import { MealSearchBar } from './MealSearchBar'
 import { MealTypeFilterChips } from './MealTypeFilterChips'
 import { ProteinFilterChips } from './ProteinFilterChips'
+import { formatLastServed } from '../lib/mealSearch'
+import type { MealServedInfo, MealSort } from '../lib/mealSearch'
 import { MEAL_TYPE_LABELS, proteinLabel } from '../types'
 import type { Meal, MealType, ProteinType, WeeklyPlan } from '../types'
 import styles from '../screens/PlanBuilderScreen.module.css'
 
 interface MealPickerPanelProps {
   plan: WeeklyPlan
+  /** Already filtered and sorted. */
   availableMeals: Meal[]
+  /** How many library meals fit this plan's meal types at all (before filters). */
+  eligibleCount: number
+  /** Last-served info from weeks before this plan, keyed by meal id. */
+  served: Map<string, MealServedInfo>
+  query: string
+  onQueryChange: (query: string) => void
+  sort: MealSort
+  onSortChange: (sort: MealSort) => void
+  onClearAll: () => void
   mealTypeFilter: MealType[]
   proteinFilter: ProteinType[]
   onToggleMealType: (type: MealType) => void
@@ -19,6 +32,13 @@ interface MealPickerPanelProps {
 export function MealPickerPanel({
   plan,
   availableMeals,
+  eligibleCount,
+  served,
+  query,
+  onQueryChange,
+  sort,
+  onSortChange,
+  onClearAll,
   mealTypeFilter,
   proteinFilter,
   onToggleMealType,
@@ -30,6 +50,14 @@ export function MealPickerPanel({
   return (
     <div>
       <h3>Choose meals</h3>
+      <MealSearchBar
+        query={query}
+        onQueryChange={onQueryChange}
+        sort={sort}
+        onSortChange={onSortChange}
+        shownCount={availableMeals.length}
+        totalCount={eligibleCount}
+      />
       <MealTypeFilterChips
         types={plan.selectedMealTypes}
         selected={mealTypeFilter}
@@ -38,8 +66,18 @@ export function MealPickerPanel({
       />
       <ProteinFilterChips selected={proteinFilter} onToggle={onToggleProtein} onClear={onClearProteinFilter} />
       <div className={styles.pickerList}>
-        {availableMeals.length === 0 && (
-          <p className={styles.emptyState}>No meals match this meal type / protein filter yet.</p>
+        {eligibleCount === 0 && (
+          <p className={styles.emptyState}>
+            No library meals fit this week's meal types yet. Add some on the Meal Library tab.
+          </p>
+        )}
+        {eligibleCount > 0 && availableMeals.length === 0 && (
+          <div className={styles.emptyState}>
+            <p>No meals match this search / filter.</p>
+            <button type="button" className="button buttonSecondary" onClick={onClearAll}>
+              Clear filters
+            </button>
+          </div>
         )}
         {availableMeals.map((meal) => (
           <div className={`card ${styles.pickerRow}`} key={meal.id}>
@@ -52,8 +90,16 @@ export function MealPickerPanel({
                   .map((t) => MEAL_TYPE_LABELS[t])
                   .join(', ')}
               </span>
+              <span className={styles.pickerMeta}>
+                Last picked: {formatLastServed(served.get(meal.id), plan.weekStartDate)}
+              </span>
             </div>
-            <button type="button" className="button buttonSecondary" onClick={() => onAdd(meal)}>
+            <button
+              type="button"
+              className="button buttonSecondary"
+              onClick={() => onAdd(meal)}
+              aria-label={`Add ${meal.name} to this week`}
+            >
               + Add
             </button>
           </div>
