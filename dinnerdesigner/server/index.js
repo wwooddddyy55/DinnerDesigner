@@ -132,8 +132,24 @@ function enqueue(task) {
   return result
 }
 
+// `currentState` serialized, rebuilt only after it changes rather than on
+// every GET (each device polls every 30s).
+let cachedStateJson = null
+let cachedStateFor = null
+
+function currentStateJson() {
+  if (cachedStateFor !== currentState) {
+    cachedStateJson = JSON.stringify(currentState)
+    cachedStateFor = currentState
+  }
+  return cachedStateJson
+}
+
 function sendJson(res, statusCode, body) {
-  const json = JSON.stringify(body)
+  sendRawJson(res, statusCode, JSON.stringify(body))
+}
+
+function sendRawJson(res, statusCode, json) {
   res.writeHead(statusCode, {
     'Content-Type': 'application/json',
     'Content-Length': Buffer.byteLength(json),
@@ -165,7 +181,8 @@ function isPlainObject(value) {
 }
 
 /** Structural check only — every element must be an object with a string id.
- * Field-level normalization happens client-side (src/lib/validate.ts). */
+ * Field-level normalization happens client-side (normalizeAppData in
+ * src/lib/migrations.ts). */
 function validatePayload(parsed) {
   if (!isPlainObject(parsed)) return 'body must be a JSON object'
   if (!Array.isArray(parsed.meals) || !Array.isArray(parsed.plans)) return 'meals and plans must be arrays'
@@ -247,7 +264,14 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'GET') {
-      sendJson(res, 200, currentState)
+      // `?since=<updatedAt>`: the client's polled version. When nothing has
+      // changed, skip serializing and sending the whole (possibly MBs) state.
+      const since = Number(url.searchParams.get('since'))
+      if (since > 0 && since === currentState.updatedAt) {
+        sendJson(res, 200, { updatedAt: currentState.updatedAt, unchanged: true })
+        return
+      }
+      sendRawJson(res, 200, currentStateJson())
       return
     }
 

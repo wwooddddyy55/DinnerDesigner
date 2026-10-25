@@ -241,3 +241,22 @@ describe('migratePlannedMealEntry', () => {
     expect(migrated.assignments[0].weight).toBe(3)
   })
 })
+
+describe('setPlanMealTypes', () => {
+  it('widens lunch- or dinner-only batches once both are tracked', () => {
+    seedPlan({
+      id: 'p1',
+      plannedMeals: [makeEntry({ id: 'e1', mealTypes: ['dinner'] }), makeEntry({ id: 'e2', mealTypes: ['breakfast'] })],
+    })
+    useAppStore.getState().setPlanMealTypes('p1', ['lunch', 'dinner'])
+    const [dinner, breakfast] = getPlan().plannedMeals
+    expect(dinner.mealTypes.sort()).toEqual(['dinner', 'lunch'])
+    expect(breakfast.mealTypes).toEqual(['breakfast'])
+  })
+
+  it('leaves batches alone when only one of lunch/dinner is tracked', () => {
+    seedPlan({ id: 'p1', plannedMeals: [makeEntry({ id: 'e1', mealTypes: ['dinner'] })] })
+    useAppStore.getState().setPlanMealTypes('p1', ['dinner', 'breakfast'])
+    expect(getPlan().plannedMeals[0].mealTypes).toEqual(['dinner'])
+  })
+})

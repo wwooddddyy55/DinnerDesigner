@@ -7,7 +7,7 @@ import { PersonRow } from '../components/PersonRow'
 import { getMealTypeTarget } from '../lib/calculations'
 import { addDays, toIsoDate, formatWeekLabel } from '../lib/date'
 import { buildExport, downloadExport, parseImport } from '../lib/exportImport'
-import { offerUndo } from '../lib/undo'
+import { dismissUndo, offerUndo } from '../lib/undo'
 import { useAppStore } from '../store/useAppStore'
 import { MEAL_TYPES, MEAL_TYPE_LABELS } from '../types'
 import type { Meal, MealType, WeeklyPlan } from '../types'
@@ -94,9 +94,18 @@ export function WeeklyPlanSetupScreen({ onNavigate }: WeeklyPlanSetupScreenProps
     if (!pendingImport) return
     const previous = { meals, plans }
     replaceAllData(pendingImport)
+    const imported = useAppStore.getState()
     setPendingImport(null)
     setNewWeekDate(defaultNewWeekDate(pendingImport.plans))
-    offerUndo('Imported data, replacing what was here.', () => replaceAllData(previous))
+    const offerId = offerUndo('Imported data, replacing what was here.', () => replaceAllData(previous))
+    // Restoring the whole pre-import snapshot would also erase anything edited
+    // since (here, or synced in from another device), so the offer is
+    // withdrawn as soon as the imported data changes.
+    const unsubscribe = useAppStore.subscribe((s) => {
+      if (s.meals === imported.meals && s.plans === imported.plans) return
+      unsubscribe()
+      dismissUndo(offerId)
+    })
   }
 
   function handleDeletePlan(plan: WeeklyPlan) {

@@ -66,6 +66,17 @@ export interface StartNewWeekOptions {
   copyPlacements?: boolean
 }
 
+/** A meal eligible for lunch or dinner can always be split as leftovers
+ * between the two once a plan is tracking both — even if the library only
+ * tagged it as one of them — since either can be cooked once and eaten as the
+ * other's leftovers. */
+function widenLunchDinner(mealTypes: MealType[], selectedTypes: MealType[]): MealType[] {
+  const bothLunchAndDinner = selectedTypes.includes('lunch') && selectedTypes.includes('dinner')
+  return bothLunchAndDinner && (mealTypes.includes('lunch') || mealTypes.includes('dinner'))
+    ? Array.from(new Set<MealType>([...mealTypes, 'lunch', 'dinner']))
+    : [...mealTypes]
+}
+
 function touchPlan(plan: WeeklyPlan): WeeklyPlan {
   return { ...plan, updatedAt: new Date().toISOString() }
 }
@@ -183,7 +194,18 @@ export const useAppStore = create<AppState>()(
       setPlanMealTypes: (planId, types) => {
         set((state) => ({
           plans: state.plans.map((plan) =>
-            plan.id === planId ? touchPlan({ ...plan, selectedMealTypes: types }) : plan,
+            plan.id === planId
+              ? touchPlan({
+                  ...plan,
+                  selectedMealTypes: types,
+                  // Batches picked before both lunch and dinner were tracked
+                  // become placeable on either, same as ones picked after.
+                  plannedMeals: plan.plannedMeals.map((entry) => {
+                    const mealTypes = widenLunchDinner(entry.mealTypes, types)
+                    return mealTypes.length === entry.mealTypes.length ? entry : { ...entry, mealTypes }
+                  }),
+                })
+              : plan,
           ),
         }))
       },
@@ -249,16 +271,7 @@ export const useAppStore = create<AppState>()(
           plans: state.plans.map((plan) => {
             if (plan.id !== planId) return plan
 
-            // A meal eligible for lunch or dinner in the library can always be split
-            // as leftovers between the two once a plan is tracking both — even if the
-            // library only tagged it as one of them — since either can be cooked once
-            // and eaten as the other's leftovers.
-            const bothLunchAndDinner =
-              plan.selectedMealTypes.includes('lunch') && plan.selectedMealTypes.includes('dinner')
-            const mealTypes: MealType[] =
-              bothLunchAndDinner && (meal.mealTypes.includes('lunch') || meal.mealTypes.includes('dinner'))
-                ? Array.from(new Set([...meal.mealTypes, 'lunch', 'dinner']))
-                : [...meal.mealTypes]
+            const mealTypes = widenLunchDinner(meal.mealTypes, plan.selectedMealTypes)
 
             const entry: PlannedMealEntry = {
               id: generateId(),

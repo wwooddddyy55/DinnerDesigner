@@ -113,16 +113,22 @@ async function fetchWithTimeout(input: string, init: RequestInit = {}): Promise<
   }
 }
 
-async function fetchServerState(): Promise<ServerState | null> {
+/** Fetches the server's state, or `'unchanged'` when `since` is given and the
+ * server is still at that version (the server then skips sending the full
+ * state, which keeps the 30s poll cheap). `null` = backend unreachable. */
+async function fetchServerState(since?: number): Promise<ServerState | 'unchanged' | null> {
   try {
     // Relative, not root-absolute: under Home Assistant Ingress the app is served
     // under a path prefix, and a leading '/' would resolve against the HA host's
     // true root instead of that prefix (same issue vite.config.ts's base: './' works
     // around for asset paths — see DEPLOY.md).
-    const res = await fetchWithTimeout('api/state', { cache: 'no-store' })
+    const url = since ? `api/state?since=${since}` : 'api/state'
+    const res = await fetchWithTimeout(url, { cache: 'no-store' })
     if (!res.ok) return null
-    const body = (await res.json()) as Partial<ServerState>
+    const body = (await res.json()) as Partial<ServerState> & { unchanged?: unknown }
     if (typeof body.updatedAt !== 'number') return null
+    // Older backends ignore `since` and always send the full state.
+    if (body.unchanged === true) return body.updatedAt === since ? 'unchanged' : null
     return toServerState(body)
   } catch {
     return null
@@ -217,16 +223,30 @@ function mergeStates(
 ): SyncStatePayload {
   const meals = mergeById(baseState?.meals ?? null, local.meals, server.meals)
   const plans = mergeById(baseState?.plans ?? null, local.plans, server.plans)
+  return {
+    meals,
+    plans,
+    activePlanId: pickActivePlanId(local.activePlanId, server.activePlanId, plans),
+    hasSeededMeals: local.hasSeededMeals || server.hasSeededMeals,
+  }
+}
+
+/** The active week is a per-device choice: keep this device's while it still
+ * exists, falling back to the server's (e.g. on a fresh device), then to the
+ * most recent week, so another device switching or deleting its week never
+ * moves or blanks this one's view. */
+function pickActivePlanId(local: string | null, server: string | null, plans: WeeklyPlan[]): string | null {
   const planIds = new Set(plans.map((p) => p.id))
-  // The active week is effectively a per-device choice, so keep this device's
-  // when it still exists.
-  const activePlanId =
-    local.activePlanId && planIds.has(local.activePlanId)
-      ? local.activePlanId
-      : server.activePlanId && planIds.has(server.activePlanId)
-        ? server.activePlanId
-        : null
-  return { meals, plans, activePlanId, hasSeededMeals: local.hasSeededMeals || server.hasSeededMeals }
+  if (local && planIds.has(local)) return local
+  if (server && planIds.has(server)) return server
+  if (plans.length === 0) return null
+  return plans.reduce((latest, p) => (p.weekStartDate > latest.weekStartDate ? p : latest)).id
+}
+
+/** Whether two states hold the same shared data. `activePlanId` and
+ * `hasSeededMeals` are left out: they're per-device and never worth a push. */
+function sameSharedData(a: SyncStatePayload, b: SyncStatePayload): boolean {
+  return isDeepEqual(a.meals, b.meals) && isDeepEqual(a.plans, b.plans)
 }
 
 // --- applying state -----------------------------------------------------------
@@ -265,7 +285,10 @@ function reconcileWith(server: ServerState): 'adopted' | 'merged' {
   const serverReset = server.updatedAt === 0
   if (serverReset && (local.meals.length > 0 || local.plans.length > 0)) markDirty(true)
   if (!dirty) {
-    applyToStore(serverPayload)
+    applyToStore({
+      ...serverPayload,
+      activePlanId: pickActivePlanId(local.activePlanId, serverPayload.activePlanId, serverPayload.plans),
+    })
     base = serverPayload
     lastSyncedAt = server.updatedAt
     saveMeta()
@@ -276,7 +299,7 @@ function reconcileWith(server: ServerState): 'adopted' | 'merged' {
   applyToStore(merged)
   base = serverPayload
   lastSyncedAt = server.updatedAt
-  markDirty(!isDeepEqual(merged, serverPayload))
+  markDirty(!sameSharedData(merged, serverPayload))
   saveMeta()
   return 'merged'
 }
@@ -337,14 +360,19 @@ async function pull(): Promise<void> {
   if (pullInFlight || pushInFlight) return
   pullInFlight = true
   try {
-    const server = await fetchServerState()
+    const syncedAtStart = lastSyncedAt
+    const server = await fetchServerState(syncedAtStart)
     if (!server) {
       backendAvailable = false
       setStatus(offlineStatus())
       return
     }
     backendAvailable = true
-    if (server.updatedAt !== lastSyncedAt) reconcileWith(server)
+    // A push can start (and land) while this GET is in flight. Its response is
+    // then older than what this device already has, and reconciling with it
+    // would revert the push — so drop it; the next pull fetches fresh state.
+    if (pushInFlight || lastSyncedAt !== syncedAtStart) return
+    if (server !== 'unchanged' && server.updatedAt !== lastSyncedAt) reconcileWith(server)
     // Unchanged server + local edits (e.g. made while it was unreachable):
     // `lastSyncedAt` is still the right base, so a plain push is accepted.
     if (dirty) await flush()
@@ -363,7 +391,7 @@ async function pull(): Promise<void> {
 export async function initialSync(): Promise<'no-backend' | 'adopted-server' | 'merged' | 'seeded-server' | 'server-empty'> {
   loadMeta()
   const server = await fetchServerState()
-  if (!server) {
+  if (!server || server === 'unchanged') {
     backendAvailable = false
     setStatus(offlineStatus())
     return 'no-backend'
@@ -405,8 +433,10 @@ export function startSyncLoop(): () => void {
     }
   }
 
-  const unsubscribe = useAppStore.subscribe(() => {
+  const unsubscribe = useAppStore.subscribe((state, prev) => {
     if (applyingRemote) return
+    // Switching weeks (activePlanId) is per-device; only shared data is pushed.
+    if (state.meals === prev.meals && state.plans === prev.plans) return
     changeSeq++
     markDirty(true)
     if (!backendAvailable) return
